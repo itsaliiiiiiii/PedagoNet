@@ -14,7 +14,7 @@ const verificationCodeSchema = new mongoose.Schema({
     createdAt: {
         type: Date,
         default: Date.now,
-        expires: process.env.VERIFICATION_CODE_EXPIRY
+        expires: process.env.VERIFICATION_CODE_EXPIRY || 600 
     }
 });
 

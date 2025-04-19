@@ -66,14 +66,18 @@ const verifyAndCreateAccount = async (email, code, userData) => {
 
         // Create new user with data from school database
         const user = await User.create({
-            email: email,
+            email,
             password: userData.password,
-            firstName: schoolUser.firstName,
-            lastName: schoolUser.lastName,
+            firstName: schoolUser.firstName,  // Make sure these fields exist in schoolUser
+            lastName: schoolUser.lastName,    // Make sure these fields exist in schoolUser
             dateOfBirth: userData.dateOfBirth,
-            role: schoolUser.role,
+            role: schoolUser.role,           // Make sure this field exists in schoolUser
             isVerified: true
         });
+
+        // Add debug logging
+        console.log('School user data:', schoolUser);
+        console.log('Created user data:', user);
 
         // Delete verification code
         await VerificationCode.deleteOne({ email, code });
@@ -87,8 +91,11 @@ const verifyAndCreateAccount = async (email, code, userData) => {
             token: token
         };
     } catch (error) {
-        console.error('Account creation error:', error);
-        return { success: false, message: 'Internal server error' };
+        console.error('Account creation error details:', error);
+        return { 
+            success: false, 
+            message: 'Failed to create account: ' + error.message 
+        };
     }
 };
 
