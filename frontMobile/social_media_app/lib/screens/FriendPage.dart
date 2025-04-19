@@ -16,7 +16,6 @@ class _FriendsPageState extends State<FriendsPage> {
   bool _isSearchFocused = false;
   String _filterValue = 'Tous';
   
-  // Sample friends data
   final List<Map<String, dynamic>> friends = [
     {
       'name': 'Sarah Benali',
@@ -171,10 +170,20 @@ class _FriendsPageState extends State<FriendsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      appBar: AppBar(),
+      appBar: AppBar(
+                backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+
+        title: Text(
+            'Amis',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w500,
+              color: Colors.black87,
+            ),
+          ),
+      ),
       body: Column(
         children: [
-          _buildHeader(),
           _buildSearchAndFilter(),
           _buildFriendsStats(),
           Expanded(
@@ -189,44 +198,6 @@ class _FriendsPageState extends State<FriendsPage> {
         backgroundColor: Colors.blue[600],
         child: const Icon(Icons.person_add, color: Colors.white),
         tooltip: 'Ajouter un ami',
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 15, 20, 15),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Text(
-            'Amis',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          Row(
-            children: [
-              IconButton(
-                onPressed: () {},
-                icon: Icon(Icons.more_vert, color: Colors.grey[700]),
-                tooltip: 'Plus d\'options',
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }

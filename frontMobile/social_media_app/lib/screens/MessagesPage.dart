@@ -20,7 +20,8 @@ class _MessagesPageState extends State<MessagesPage> {
   final List<Map<String, dynamic>> conversations = [
     {
       'name': 'Sarah B.',
-      'avatar': 'https://media.licdn.com/dms/image/v2/D5622AQHC6U0LmDdu3g/feedshare-shrink_800/B56ZYqUWeIH0Ak-/0/1744466701049?e=1747267200&v=beta&t=5cVOs_2GPFYZUb42Gl46DPyji4j9gGyxlY660DAEttY',
+      'avatar':
+          'https://media.licdn.com/dms/image/v2/D5622AQHC6U0LmDdu3g/feedshare-shrink_800/B56ZYqUWeIH0Ak-/0/1744466701049?e=1747267200&v=beta&t=5cVOs_2GPFYZUb42Gl46DPyji4j9gGyxlY660DAEttY',
       'lastMessage': 'As-tu terminé le projet Flutter ?',
       'time': DateTime.now().subtract(Duration(minutes: 5)),
       'unread': 2,
@@ -47,7 +48,8 @@ class _MessagesPageState extends State<MessagesPage> {
     {
       'name': 'Prof. Alaoui',
       'avatar': '',
-      'lastMessage': 'Merci pour votre rapport, j\'ai quelques commentaires à vous faire.',
+      'lastMessage':
+          'Merci pour votre rapport, j\'ai quelques commentaires à vous faire.',
       'time': DateTime.now().subtract(Duration(days: 1)),
       'unread': 0,
       'isOnline': false,
@@ -90,10 +92,19 @@ class _MessagesPageState extends State<MessagesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      appBar: AppBar(),
+      appBar: AppBar(
+        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+        title: Text(
+          'Messages',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w500,
+            color: Colors.black87,
+          ),
+        ),
+      ),
       body: Column(
         children: [
-          _buildHeader(),
           _buildSearchAndFilter(),
           Expanded(
             child: _buildConversationsList(),
@@ -105,44 +116,6 @@ class _MessagesPageState extends State<MessagesPage> {
         backgroundColor: Colors.blue[600],
         child: const Icon(Icons.edit, color: Colors.white),
         tooltip: 'Nouveau message',
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 15, 20, 15),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Text(
-            'Messages',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          Row(
-            children: [
-              IconButton(
-                onPressed: () {},
-                icon: Icon(Icons.more_vert, color: Colors.grey[700]),
-                tooltip: 'Plus d\'options',
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }
@@ -161,37 +134,37 @@ class _MessagesPageState extends State<MessagesPage> {
       ),
       child: Column(
         children: [
-          Container(
-            height: 45,
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: _isSearchFocused ? Colors.blue[400]! : Colors.grey[300]!,
-                width: 1,
-              ),
-            ),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Rechercher des messages...',
-                hintStyle: TextStyle(color: Colors.grey[500]),
-                prefixIcon: Icon(Icons.search, color: Colors.grey[500]),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 10),
-              ),
-              onTap: () {
-                setState(() {
-                  _isSearchFocused = true;
-                });
-              },
-              onSubmitted: (_) {
-                setState(() {
-                  _isSearchFocused = false;
-                });
-              },
-            ),
-          ),
+          // Container(
+          //   height: 45,
+          //   decoration: BoxDecoration(
+          //     color: Colors.grey[100],
+          //     borderRadius: BorderRadius.circular(8),
+          //     border: Border.all(
+          //       color: _isSearchFocused ? Colors.blue[400]! : Colors.grey[300]!,
+          //       width: 1,
+          //     ),
+          //   ),
+          //   child: TextField(
+          //     controller: _searchController,
+          //     decoration: InputDecoration(
+          //       hintText: 'Rechercher des messages...',
+          //       hintStyle: TextStyle(color: Colors.grey[500]),
+          //       prefixIcon: Icon(Icons.search, color: Colors.grey[500]),
+          //       border: InputBorder.none,
+          //       contentPadding: const EdgeInsets.symmetric(vertical: 10),
+          //     ),
+          //     onTap: () {
+          //       setState(() {
+          //         _isSearchFocused = true;
+          //       });
+          //     },
+          //     onSubmitted: (_) {
+          //       setState(() {
+          //         _isSearchFocused = false;
+          //       });
+          //     },
+          //   ),
+          // ),
           const SizedBox(height: 10),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -212,7 +185,7 @@ class _MessagesPageState extends State<MessagesPage> {
 
   Widget _buildFilterChip(String label) {
     final isSelected = _filterValue == label;
-    
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -256,11 +229,11 @@ class _MessagesPageState extends State<MessagesPage> {
     final bool isGroup = conversation['isGroup'] ?? false;
     final bool hasUnread = (conversation['unread'] ?? 0) > 0;
     final bool isOnline = conversation['isOnline'] ?? false;
-    
+
     // Format time
     final DateTime time = conversation['time'];
     // final String formattedTime = _formatTime(time);
-    
+
     return InkWell(
       onTap: () {
         // Navigate to conversation detail
@@ -301,7 +274,8 @@ class _MessagesPageState extends State<MessagesPage> {
                           conversation['name'],
                           style: TextStyle(
                             fontSize: 16,
-                            fontWeight: hasUnread ? FontWeight.bold : FontWeight.w500,
+                            fontWeight:
+                                hasUnread ? FontWeight.bold : FontWeight.w500,
                             color: Colors.black87,
                           ),
                           maxLines: 1,
@@ -313,8 +287,10 @@ class _MessagesPageState extends State<MessagesPage> {
                         "12:00",
                         style: TextStyle(
                           fontSize: 12,
-                          color: hasUnread ? Colors.blue[700] : Colors.grey[500],
-                          fontWeight: hasUnread ? FontWeight.bold : FontWeight.normal,
+                          color:
+                              hasUnread ? Colors.blue[700] : Colors.grey[500],
+                          fontWeight:
+                              hasUnread ? FontWeight.bold : FontWeight.normal,
                         ),
                       ),
                     ],
@@ -340,8 +316,10 @@ class _MessagesPageState extends State<MessagesPage> {
                           conversation['lastMessage'],
                           style: TextStyle(
                             fontSize: 14,
-                            color: hasUnread ? Colors.black87 : Colors.grey[600],
-                            fontWeight: hasUnread ? FontWeight.w500 : FontWeight.normal,
+                            color:
+                                hasUnread ? Colors.black87 : Colors.grey[600],
+                            fontWeight:
+                                hasUnread ? FontWeight.w500 : FontWeight.normal,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -374,9 +352,10 @@ class _MessagesPageState extends State<MessagesPage> {
     );
   }
 
-  Widget _buildAvatar(Map<String, dynamic> conversation, bool isGroup, bool isOnline) {
+  Widget _buildAvatar(
+      Map<String, dynamic> conversation, bool isGroup, bool isOnline) {
     final String firstLetter = conversation['name'][0].toUpperCase();
-    
+
     return Stack(
       children: [
         Container(
@@ -390,7 +369,8 @@ class _MessagesPageState extends State<MessagesPage> {
               width: 2,
             ),
           ),
-          child: conversation['avatar'] != null && conversation['avatar'].isNotEmpty
+          child: conversation['avatar'] != null &&
+                  conversation['avatar'].isNotEmpty
               ? ClipOval(
                   child: Image.network(
                     conversation['avatar'],

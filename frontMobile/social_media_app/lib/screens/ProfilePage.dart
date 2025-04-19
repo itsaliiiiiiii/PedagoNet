@@ -1,175 +1,3 @@
-// import 'package:flutter/material.dart';
-// import 'package:social_media_app/widgets/appBar/AppBar.dart';
-// import 'package:social_media_app/widgets/homePage/Post/Post.dart';
-
-// class ProfilePage extends StatelessWidget {
-//   ProfilePage({super.key});
-
-//   final List<Map<String, dynamic>> posts = [
-//     {
-//       'name': 'Anas Zerhoun',
-//       'role': 'Étudiant GI2',
-//       'time': '1h',
-//       'description':
-//           'Voici mon premier post sur l\'app académique ! Voici mon premier post sur l\'app académique ! Voici mon premier post sur l\'app académique !Voici mon premier post sur l\'app académique !',
-//       'imageUrl':
-//           'https://media.licdn.com/dms/image/v2/D4D22AQGStRRs6la14g/feedshare-shrink_800/B4DZYXfK8nG4Ag-/0/1744150772065?e=1747267200&v=beta&t=EoR1gz6Usd0RayI-AzPJ93aaxIGoPjYg7RYt0RZMDM0',
-//       'likes': 12,
-//       'isLiked': false,
-//     },
-//     {
-//       'name': 'Sarah B.',
-//       'role': 'Étudiante GI2',
-//       'time': '2h',
-//       'description': 'Un post sans imageeeeeeeeeeeeeeee.',
-//       'likes': 8,
-//       'isLiked': false,
-//     },
-//     {
-//       'name': 'Sarah B.',
-//       'role': 'Étudiante GI2',
-//       'time': '2h',
-//       'description': 'Nouveau projet en Flutter terminé !',
-//       'imageUrl':
-//           'https://media.licdn.com/dms/image/v2/D5622AQHC6U0LmDdu3g/feedshare-shrink_800/B56ZYqUWeIH0Ak-/0/1744466701049?e=1747267200&v=beta&t=5cVOs_2GPFYZUb42Gl46DPyji4j9gGyxlY660DAEttY',
-//       'likes': 15,
-//       'isLiked': true,
-//     },
-//     {
-//       'name': 'Anas Zerhoun',
-//       'role': 'Étudiant GI2',
-//       'time': '1h',
-//       'description': 'Voici mon premier post sur l\'app académique !',
-//       'imageUrl':
-//           'https://media.licdn.com/dms/image/v2/D4D22AQGStRRs6la14g/feedshare-shrink_800/B4DZYXfK8nG4Ag-/0/1744150772065?e=1747267200&v=beta&t=EoR1gz6Usd0RayI-AzPJ93aaxIGoPjYg7RYt0RZMDM0',
-//       'likes': 20,
-//       'isLiked': false,
-//     },
-//     {
-//       'name': 'Sarah B.',
-//       'role': 'Étudiante GI2',
-//       'time': '2h',
-//       'description': 'Nouveau projet en Flutter terminé !',
-//       'imageUrl':
-//           'https://media.licdn.com/dms/image/v2/D5622AQHC6U0LmDdu3g/feedshare-shrink_800/B56ZYqUWeIH0Ak-/0/1744466701049?e=1747267200&v=beta&t=5cVOs_2GPFYZUb42Gl46DPyji4j9gGyxlY660DAEttY',
-//       'likes': 9,
-//       'isLiked': false,
-//     },
-//     {
-//       'name': 'Sarah B.',
-//       'role': 'Étudiante GI2',
-//       'time': '2h',
-//       'imageUrl':
-//           'https://media.licdn.com/dms/image/v2/D5622AQHC6U0LmDdu3g/feedshare-shrink_800/B56ZYqUWeIH0Ak-/0/1744466701049?e=1747267200&v=beta&t=5cVOs_2GPFYZUb42Gl46DPyji4j9gGyxlY660DAEttY',
-//       'likes': 6,
-//       'isLiked': false,
-//     },
-//     {
-//       'name': 'Anas Zerhoun',
-//       'role': 'Étudiant GI2',
-//       'time': '1h',
-//       'description': 'Voici mon premier post sur l\'app académique !',
-//       'imageUrl':
-//           'https://media.licdn.com/dms/image/v2/D4D22AQGStRRs6la14g/feedshare-shrink_800/B4DZYXfK8nG4Ag-/0/1744150772065?e=1747267200&v=beta&t=EoR1gz6Usd0RayI-AzPJ93aaxIGoPjYg7RYt0RZMDM0',
-//       'likes': 13,
-//       'isLiked': false,
-//     },
-//   ];
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       backgroundColor: Colors.white,
-//       appBar: CustomAppBar(),
-//       body: SingleChildScrollView(
-//         child: Column(
-//           children: [
-//             SizedBox(
-//               height: 200,
-//               child: Stack(
-//                 children: [
-//                   SizedBox(
-//                     width: double.infinity,
-//                     height: 120,
-//                     child: Image.network(
-//                       'https://media.licdn.com/dms/image/v2/D4D16AQE-BpAZSleNiQ/profile-displaybackgroundimage-shrink_350_1400/profile-displaybackgroundimage-shrink_350_1400/0/1738106643918?e=1750291200&v=beta&t=yVCaIgS0STCYTViksTxb3GC1Wtl-hXkBaqGksXq5bVo',
-//                       fit: BoxFit.cover,
-//                     ),
-//                   ),
-//                   Positioned(
-//                     top: 50,
-//                     left: 10,
-//                     child: CircleAvatar(
-//                         radius: 65,
-//                         backgroundColor: Colors.white,
-//                         child: ClipOval(
-//                           child: Image.network(
-//                               fit: BoxFit.contain,
-//                               'https://media.licdn.com/dms/image/v2/D4D03AQHqpQPzYDNS1A/profile-displayphoto-shrink_800_800/B4DZZDb7PGG8Ag-/0/1744888117952?e=1750291200&v=beta&t=SEj6M9Q8Wb6Lw7mp0GwhaZrVWIq8vdyA1VttUeK9c1E'),
-//                         )),
-//                   )
-//                 ],
-//               ),
-//             ),
-//             Padding(
-//               padding: const EdgeInsets.only(bottom: 10, left: 20),
-//               child: Row(
-//                 crossAxisAlignment: CrossAxisAlignment.start,
-//                 children: [
-//                   Expanded(
-//                     child: Column(
-//                       crossAxisAlignment: CrossAxisAlignment.start,
-//                       children: [
-//                         Text(
-//                           "Anas Zerhoun",
-//                           style: TextStyle(
-//                               fontSize: 25, fontWeight: FontWeight.w500),
-//                         ),
-//                         Text(
-//                           "Software engineering",
-//                           style: TextStyle(
-//                               fontSize: 18,
-//                               color: const Color.fromARGB(255, 142, 142, 142)),
-//                         )
-//                       ],
-//                     ),
-//                   ),
-//                   Padding(
-//                     padding: const EdgeInsets.only(top: 8.0,right: 20),
-//                     child: Text("209 relations",style: TextStyle(color: Colors.blue),),
-//                   )
-//                 ],
-//               ),
-//             ),
-//             Divider(
-//               height: 80,
-//               color: const Color.fromARGB(255, 202, 199, 199),
-//               thickness: 6,
-//             ),
-//             ListView.builder(
-//               shrinkWrap: true,
-//               physics: NeverScrollableScrollPhysics(),
-//               padding: EdgeInsets.all(10),
-//               itemCount: posts.length,
-//               itemBuilder: (context, index) {
-//                 final post = posts[index];
-//                 return Post(
-//                   name: post['name']!,
-//                   role: post['role']!,
-//                   time: post['time']!,
-//                   description: post['description'],
-//                   imageUrl: post['imageUrl'],
-//                   likes: post['likes'] ?? 0,
-//                   isLiked: post['isLiked'],
-//                 );
-//               },
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
 
 import 'package:flutter/material.dart';
 import 'package:social_media_app/screens/FriendPage.dart';
@@ -338,7 +166,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   backgroundColor: Colors.white,
                   child: ClipOval(
                     child: Image.network(
-                      'https://media.licdn.com/dms/image/v2/D4D03AQHqpQPzYDNS1A/profile-displayphoto-shrink_800_800/B4DZZDb7PGG8Ag-/0/1744888117952?e=1750291200&v=beta&t=SEj6M9Q8Wb6Lw7mp0GwhaZrVWIq8vdyA1VttUeK9c1E',
+          'https://media.licdn.com/dms/image/v2/D4D22AQGStRRs6la14g/feedshare-shrink_800/B4DZYXfK8nG4Ag-/0/1744150772065?e=1747267200&v=beta&t=EoR1gz6Usd0RayI-AzPJ93aaxIGoPjYg7RYt0RZMDM0',
                       fit: BoxFit.cover,
                       width: 124,
                       height: 124,
@@ -403,7 +231,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Anas Zerhoun",
+                      "Imad Tahiri",
                       style: TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
@@ -425,7 +253,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
                         SizedBox(width: 4),
                         Text(
-                          "Rabat, Maroc",
+                          "Khouribga, Maroc",
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey[600],
@@ -442,8 +270,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.blue[50],
-                      borderRadius: BorderRadius.circular(20),
+                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -470,7 +297,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    "École Mohammadia d'Ingénieurs",
+                    "Ensa Khouribga",
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey[700],
