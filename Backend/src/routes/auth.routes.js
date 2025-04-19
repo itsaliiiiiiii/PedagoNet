@@ -27,6 +27,7 @@ router.post('/verify', async (req, res) => {
 
 // Login with JWT
 router.post('/login', async (req, res) => {
+    // complete login
     try {
         const { email, password } = req.body;
         const result = await login(email, password);
