@@ -11,7 +11,7 @@ const createPost = async (authorId, content, visibility = 'public', attachments 
     const session = driver.session();
     try {
         const result = await session.run(
-            `MATCH (author:User {id: $authorId})
+            `MATCH (author:User {id_user: $authorId})
              CREATE (p:Post {
                 id: randomUUID(),
                 content: $content,
@@ -33,7 +33,7 @@ const createPost = async (authorId, content, visibility = 'public', attachments 
             post: {
                 ...post,
                 author: {
-                    id: author.id,
+                    id: author.id_user,
                     firstName: author.firstName,
                     lastName: author.lastName
                 }
@@ -53,7 +53,7 @@ const getPosts = async (userId, connectedUserIds, limit = 10, skip = 0) => {
     try {
         const result = await session.run(
             `MATCH (author:User)-[:AUTHORED]->(p:Post)
-             WHERE author.id IN $userIds
+             WHERE author.id_user IN $userIds
              AND (p.visibility = 'public' OR p.visibility = 'connections')
              RETURN p, author
              ORDER BY p.createdAt DESC
@@ -72,7 +72,7 @@ const getPosts = async (userId, connectedUserIds, limit = 10, skip = 0) => {
             return {
                 ...post,
                 author: {
-                    id: author.id,
+                    id: author.id_user,
                     firstName: author.firstName,
                     lastName: author.lastName
                 }
@@ -110,7 +110,7 @@ const getPostById = async (postId) => {
             post: {
                 ...post,
                 author: {
-                    id: author.id,
+                    id: author.id_user,
                     firstName: author.firstName,
                     lastName: author.lastName
                 }
@@ -140,7 +140,7 @@ const updatePost = async (postId, authorId, updates) => {
         updateStatements.push('p.updatedAt = datetime()');
 
         const result = await session.run(
-            `MATCH (author:User {id: $authorId})-[:AUTHORED]->(p:Post {id: $postId})
+            `MATCH (author:User {id_user: $authorId})-[:AUTHORED]->(p:Post {id: $postId})
              SET ${updateStatements.join(', ')}
              RETURN p, author`,
             params
@@ -158,7 +158,7 @@ const updatePost = async (postId, authorId, updates) => {
             post: {
                 ...post,
                 author: {
-                    id: author.id,
+                    id: author.id_user,
                     firstName: author.firstName,
                     lastName: author.lastName
                 }
@@ -177,7 +177,7 @@ const deletePost = async (postId, authorId) => {
     const session = driver.session();
     try {
         const result = await session.run(
-            `MATCH (author:User {id: $authorId})-[:AUTHORED]->(p:Post {id: $postId})
+            `MATCH (author:User {id_user: $authorId})-[:AUTHORED]->(p:Post {id: $postId})
              DETACH DELETE p
              RETURN count(p) as deleted`,
             { postId, authorId }

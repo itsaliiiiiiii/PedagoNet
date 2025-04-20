@@ -4,7 +4,7 @@ require('dotenv').config();
 const generateToken = (user) => {
     return jwt.sign(
         {
-            userId: user._id,
+            id_user: user.id_user,
             email: user.email,
             role: user.role
         },
@@ -15,8 +15,14 @@ const generateToken = (user) => {
 
 const verifyToken = (token) => {
     try {
-        return jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        return {
+            id_user: decoded.id_user,
+            email: decoded.email,
+            role: decoded.role
+        };
     } catch (error) {
+        console.error('Token verification error:', error);
         return null;
     }
 };

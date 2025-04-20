@@ -11,11 +11,12 @@ const authenticateToken = async (req, res, next) => {
         }
 
         const decoded = verifyToken(token);
-        if (!decoded) {
+        if (!decoded || !decoded.id_user) {
             return res.status(403).json({ success: false, message: 'Invalid or expired token' });
         }
+        const user = await findUserById(decoded.id_user);
+        console.log(user);
 
-        const user = await findUserById(decoded.userId);
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }

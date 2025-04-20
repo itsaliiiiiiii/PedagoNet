@@ -69,12 +69,13 @@ const seedDatabase = async () => {
         for (const user of users) {
             const salt = await bcrypt.genSalt(10);
             const hashedPassword = await bcrypt.hash(user.password, salt);
+            const id_user = require('crypto').randomUUID();
             await session.run(
-                'CREATE (u:User {email: $email, password: $password, firstName: $firstName, ' +
+                'CREATE (u:User {id_user: $id_user, email: $email, password: $password, firstName: $firstName, ' +
                 'lastName: $lastName, role: $role, ' +
                 (user.role === 'professor' ? 'department: $department, ' : 'major: $major, ') +
                 'bio: $bio, dateOfBirth: $dateOfBirth, isVerified: true})',
-                { ...user, password: hashedPassword }
+                { ...user, id_user, password: hashedPassword }
             );
         }
 
@@ -84,14 +85,16 @@ const seedDatabase = async () => {
 
         for (const professor of professors) {
             const classroomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+            const id_classroom = require('crypto').randomUUID();
             
             await session.run(
                 'MATCH (p:User {email: $profEmail}) ' +
-                'CREATE (c:Classroom {name: $name, description: $description, ' +
+                'CREATE (c:Classroom {id_classroom: $id_classroom, name: $name, description: $description, ' +
                 'code: $code, isActive: true}) ' +
                 'CREATE (p)-[:TEACHES]->(c)',
                 {
                     profEmail: professor.email,
+                    id_classroom,
                     name: `${professor.department} 101`,
                     description: `Introduction to ${professor.department}`,
                     code: classroomCode
@@ -119,13 +122,15 @@ const seedDatabase = async () => {
         for (const record of classrooms.records) {
             const classroom = record.get('c').properties;
             
+            const id_task = require('crypto').randomUUID();
             await session.run(
                 'MATCH (c:Classroom {code: $code}) ' +
-                'CREATE (t:Task {title: $title, description: $description, ' +
+                'CREATE (t:Task {id_task: $id_task, title: $title, description: $description, ' +
                 'dueDate: $dueDate, maxPoints: $maxPoints}) ' +
                 'CREATE (c)-[:HAS_TASK]->(t)',
                 {
                     code: classroom.code,
+                    id_task,
                     title: `${classroom.name} Final Project`,
                     description: 'Complete a comprehensive project demonstrating your understanding of the course material.',
                     dueDate: dueDate.toISOString(),
@@ -137,13 +142,15 @@ const seedDatabase = async () => {
         console.log('📫 Creating messages...');
         for (const student of students) {
             for (const professor of professors) {
+                const id_message = require('crypto').randomUUID();
                 await session.run(
                     'MATCH (s:User {email: $studentEmail}), (p:User {email: $profEmail}) ' +
-                    'CREATE (m:Message {content: $content, status: "sent", createdAt: datetime()}) ' +
+                    'CREATE (m:Message {id_message: $id_message, content: $content, status: "sent", createdAt: datetime()}) ' +
                     'CREATE (s)-[:SENT]->(m)-[:RECEIVED_BY]->(p)',
                     {
                         studentEmail: student.email,
                         profEmail: professor.email,
+                        id_message,
                         content: 'Hello Professor, I have a question about the course material.'
                     }
                 );
@@ -152,12 +159,14 @@ const seedDatabase = async () => {
 
         console.log('📱 Creating posts...');
         for (const user of users) {
+            const id_post = require('crypto').randomUUID();
             await session.run(
                 'MATCH (u:User {email: $email}) ' +
-                'CREATE (p:Post {content: $content, visibility: $visibility, createdAt: datetime()}) ' +
+                'CREATE (p:Post {id_post: $id_post, content: $content, visibility: $visibility, createdAt: datetime()}) ' +
                 'CREATE (u)-[:AUTHORED]->(p)',
                 {
                     email: user.email,
+                    id_post,
                     content: 'Excited to be part of this learning community! #Education #Learning',
                     visibility: 'public'
                 }
@@ -166,12 +175,14 @@ const seedDatabase = async () => {
 
         console.log('🤝 Creating connections between users...');
         for (let i = 0; i < students.length - 1; i++) {
+            const id_connection = require('crypto').randomUUID();
             await session.run(
                 'MATCH (u1:User {email: $email1}), (u2:User {email: $email2}) ' +
-                'CREATE (u1)-[:CONNECTION {status: "accepted", createdAt: datetime()}]->(u2)',
+                'CREATE (u1)-[:CONNECTION {id_connection: $id_connection, status: "accepted", createdAt: datetime()}]->(u2)',
                 {
                     email1: students[i].email,
-                    email2: students[i + 1].email
+                    email2: students[i + 1].email,
+                    id_connection
                 }
             );
         }

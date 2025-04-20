@@ -10,7 +10,7 @@ const createConnection = async (senderId, receiverId, status = 'pending') => {
     const session = driver.session();
     try {
         await session.run(
-            `MATCH (sender:User {id: $senderId}), (receiver:User {id: $receiverId})
+            `MATCH (sender:User {id_user: $senderId}), (receiver:User {id_user: $receiverId})
              CREATE (sender)-[r:CONNECTION {status: $status, createdAt: datetime()}]->(receiver)
              RETURN r`,
             { senderId, receiverId, status }
@@ -28,7 +28,7 @@ const updateConnectionStatus = async (senderId, receiverId, status) => {
     const session = driver.session();
     try {
         await session.run(
-            `MATCH (sender:User {id: $senderId})-[r:CONNECTION]->(receiver:User {id: $receiverId})
+            `MATCH (sender:User {id_user: $senderId})-[r:CONNECTION]->(receiver:User {id_user: $receiverId})
              SET r.status = $status, r.updatedAt = datetime()
              RETURN r`,
             { senderId, receiverId, status }
@@ -46,9 +46,9 @@ const getConnections = async (userId, status = null) => {
     const session = driver.session();
     try {
         const query = status ?
-            `MATCH (u:User {id: $userId})<-[r:CONNECTION {status: $status}]-(other:User)
+            `MATCH (u:User {id_user: $userId})<-[r:CONNECTION {status: $status}]-(other:User)
             RETURN other.id as id, other.email as email, r.status as status` :
-            `MATCH (u:User {id: $userId})<-[r:CONNECTION]-(other:User)
+            `MATCH (u:User {id_user: $userId})<-[r:CONNECTION]-(other:User)
             RETURN other.id as id, other.email as email, r.status as status`;
 
         const result = await session.run(query, { userId, status });

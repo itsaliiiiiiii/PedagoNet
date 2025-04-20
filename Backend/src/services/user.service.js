@@ -12,10 +12,11 @@ const createUser = async (userData) => {
     try {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(userData.password, salt);
+        const id_user = require('crypto').randomUUID();
         
         const result = await session.run(
             `CREATE (u:User {
-                id: randomUUID(),
+                id_user: $id_user,
                 email: $email,
                 password: $password,
                 firstName: $firstName,
@@ -27,6 +28,7 @@ const createUser = async (userData) => {
                 updatedAt: datetime()
             }) RETURN u`,
             {
+                id_user,
                 email: userData.email.toLowerCase(),
                 password: hashedPassword,
                 firstName: userData.firstName,
@@ -69,7 +71,7 @@ const findUserById = async (userId) => {
     const session = driver.session();
     try {
         const result = await session.run(
-            'MATCH (u:User {id: $userId}) RETURN u',
+            'MATCH (u:User {id_user: $userId}) RETURN u',
             { userId }
         );
         
@@ -90,7 +92,7 @@ const updateUser = async (userId, updateData) => {
         let params = { userId };
         
         Object.entries(updateData).forEach(([key, value]) => {
-            if (key !== 'id') {
+            if (key !== 'id_user') {
                 updates.push(`u.${key} = $${key}`);
                 params[key] = value;
             }
@@ -99,7 +101,7 @@ const updateUser = async (userId, updateData) => {
         updates.push('u.updatedAt = datetime()');
         
         const result = await session.run(
-            `MATCH (u:User {id: $userId})
+            `MATCH (u:User {id_user: $userId})
              SET ${updates.join(', ')}
              RETURN u`,
             params

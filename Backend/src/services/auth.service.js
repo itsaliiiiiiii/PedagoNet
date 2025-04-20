@@ -45,8 +45,8 @@ const initiateRegistration = async (userData) => {
             return { success: false, message: 'Failed to send verification email' };
         }
 
-        return { 
-            success: true, 
+        return {
+            success: true,
             message: 'Verification code sent successfully',
             userData: {
                 email: userData.email,
@@ -83,9 +83,10 @@ const verifyAndCreateAccount = async (email, code, userData) => {
         const hashedPassword = await bcrypt.hash(userData.password, salt);
 
         // Create new user
+        const id_user = require('crypto').randomUUID();
         const result = await session.run(
             `CREATE (u:User {
-                id: randomUUID(),
+                id_user: $id_user,
                 email: $email,
                 password: $password,
                 firstName: $firstName,
@@ -97,6 +98,7 @@ const verifyAndCreateAccount = async (email, code, userData) => {
                 updatedAt: datetime()
             }) RETURN u`,
             {
+                id_user,
                 email: email.toLowerCase(),
                 password: hashedPassword,
                 firstName: userData.firstName,
@@ -106,27 +108,41 @@ const verifyAndCreateAccount = async (email, code, userData) => {
             }
         );
 
-        const user = result.records[0].get('u').properties;
+        const userNode = result.records[0].get('u');
+        const user = {
+            id_user: userNode.properties.id_user,
+            email: userNode.properties.email,
+            role: userNode.properties.role
+        };
+        console.log(user);
 
-        // Delete verification code
-        await session.run(
-            'MATCH (v:VerificationCode {email: $email}) DELETE v',
-            { email: email.toLowerCase() }
-        );
+        // Verify password
+        if (!password) {
+            return { success: false, message: 'Password is required' };
+        }
+
+        const isValidPassword = await bcrypt.compare(password, user.password);
+        if (!isValidPassword) {
+            return { success: false, message: 'Incorrect password' };
+        }
 
         // Generate JWT token
-        const token = generateToken(user);
+        const token = generateToken({
+            id_user: user.id_user,
+            email: user.email,
+            role: user.role
+        });
 
-        return { 
-            success: true, 
-            message: 'Account created successfully',
+        return {
+            success: true,
+            message: 'Login successful',
             token: token
         };
     } catch (error) {
         console.error('Account creation error details:', error);
-        return { 
-            success: false, 
-            message: 'Failed to create account: ' + error.message 
+        return {
+            success: false,
+            message: 'Failed to create account: ' + error.message
         };
     } finally {
         await session.close();
@@ -146,7 +162,12 @@ const login = async (email, password) => {
             return { success: false, message: 'Email not found' };
         }
 
-        const user = result.records[0].get('u').properties;
+        const userNode = result.records[0].get('u');
+        const user = {
+            id_user: userNode.properties.id_user,
+            ...userNode.properties
+        };
+        console.log(user);
 
         // Verify password
         if (!password) {
@@ -159,7 +180,11 @@ const login = async (email, password) => {
         }
 
         // Generate JWT token
-        const token = generateToken(user);
+        const token = generateToken({
+            id_user: user.id_user,
+            email: user.email,
+            role: user.role
+        });
 
         return {
             success: true,
