@@ -1,33 +1,43 @@
-const User = require('../models/user.model');
-const VerificationCode = require('../models/verificationCode.model');
+const neo4j = require('neo4j-driver');
+const bcrypt = require('bcrypt');
 const { sendVerificationEmail } = require('./email.service');
 const { generateToken } = require('./jwt.service');
-const { SchoolUser } = require('../config/schoolDatabase');
+require('dotenv').config();
+
+const driver = neo4j.driver(
+    process.env.NEO4J_URI,
+    neo4j.auth.basic(process.env.NEO4J_USERNAME, process.env.NEO4J_PASSWORD)
+);
 
 const generateVerificationCode = () => {
     return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
 const initiateRegistration = async (userData) => {
+    const session = driver.session();
     try {
         // Check if user already exists in our application database
-        const existingUser = await User.findOne({ email: userData.email });
-        if (existingUser) {
+        const existingUserResult = await session.run(
+            'MATCH (u:User {email: $email}) RETURN u',
+            { email: userData.email.toLowerCase() }
+        );
+
+        if (existingUserResult.records.length > 0) {
             return { success: false, message: 'Email already registered in our system' };
         }
 
-        // Verify against school database
-        const schoolUser = await SchoolUser.findOne({ email: userData.email });
-        if (!schoolUser) {
-            return { success: false, message: 'Email not found in school records' };
-        }
-
-        // Generate and store verification code
+        // Generate verification code
         const code = generateVerificationCode();
-        await VerificationCode.create({
-            email: userData.email,
-            code: code
-        });
+
+        // Store verification code in Neo4j
+        await session.run(
+            `CREATE (v:VerificationCode {
+                email: $email,
+                code: $code,
+                createdAt: datetime()
+            })`,
+            { email: userData.email.toLowerCase(), code }
+        );
 
         // Send verification email
         const emailSent = await sendVerificationEmail(userData.email, code);
@@ -39,48 +49,70 @@ const initiateRegistration = async (userData) => {
             success: true, 
             message: 'Verification code sent successfully',
             userData: {
-                firstName: schoolUser.firstName,
-                lastName: schoolUser.lastName,
-                role: schoolUser.role
+                email: userData.email,
+                firstName: userData.firstName,
+                lastName: userData.lastName,
+                role: userData.role
             }
         };
     } catch (error) {
         console.error('Registration initiation error:', error);
         return { success: false, message: 'Internal server error' };
+    } finally {
+        await session.close();
     }
 };
 
 const verifyAndCreateAccount = async (email, code, userData) => {
+    const session = driver.session();
     try {
         // Find and validate verification code
-        const verificationRecord = await VerificationCode.findOne({ email, code });
-        if (!verificationRecord) {
+        const verificationResult = await session.run(
+            `MATCH (v:VerificationCode {email: $email, code: $code})
+             WHERE datetime() < v.createdAt + duration('PT1H')
+             RETURN v`,
+            { email: email.toLowerCase(), code }
+        );
+
+        if (verificationResult.records.length === 0) {
             return { success: false, message: 'Invalid or expired verification code' };
         }
 
-        // Verify against school database again
-        const schoolUser = await SchoolUser.findOne({ email });
-        if (!schoolUser) {
-            return { success: false, message: 'User not found in school records' };
-        }
+        // Hash password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(userData.password, salt);
 
-        // Create new user with data from school database
-        const user = await User.create({
-            email,
-            password: userData.password,
-            firstName: schoolUser.firstName,  // Make sure these fields exist in schoolUser
-            lastName: schoolUser.lastName,    // Make sure these fields exist in schoolUser
-            dateOfBirth: userData.dateOfBirth,
-            role: schoolUser.role,           // Make sure this field exists in schoolUser
-            isVerified: true
-        });
+        // Create new user
+        const result = await session.run(
+            `CREATE (u:User {
+                id: randomUUID(),
+                email: $email,
+                password: $password,
+                firstName: $firstName,
+                lastName: $lastName,
+                dateOfBirth: datetime($dateOfBirth),
+                role: $role,
+                isVerified: true,
+                createdAt: datetime(),
+                updatedAt: datetime()
+            }) RETURN u`,
+            {
+                email: email.toLowerCase(),
+                password: hashedPassword,
+                firstName: userData.firstName,
+                lastName: userData.lastName,
+                dateOfBirth: userData.dateOfBirth,
+                role: userData.role
+            }
+        );
 
-        // Add debug logging
-        console.log('School user data:', schoolUser);
-        console.log('Created user data:', user);
+        const user = result.records[0].get('u').properties;
 
         // Delete verification code
-        await VerificationCode.deleteOne({ email, code });
+        await session.run(
+            'MATCH (v:VerificationCode {email: $email}) DELETE v',
+            { email: email.toLowerCase() }
+        );
 
         // Generate JWT token
         const token = generateToken(user);
@@ -96,21 +128,34 @@ const verifyAndCreateAccount = async (email, code, userData) => {
             success: false, 
             message: 'Failed to create account: ' + error.message 
         };
+    } finally {
+        await session.close();
     }
 };
 
 const login = async (email, password) => {
+    const session = driver.session();
     try {
         // Find user
-        const user = await User.findOne({ email });
-        if (!user) {
-            return { success: false, message: 'Invalid credentials' };
+        const result = await session.run(
+            'MATCH (u:User {email: $email}) RETURN u',
+            { email: email.toLowerCase() }
+        );
+
+        if (result.records.length === 0) {
+            return { success: false, message: 'Email not found' };
         }
 
+        const user = result.records[0].get('u').properties;
+
         // Verify password
-        const isValidPassword = await user.comparePassword(password);
+        if (!password) {
+            return { success: false, message: 'Password is required' };
+        }
+
+        const isValidPassword = await bcrypt.compare(password, user.password);
         if (!isValidPassword) {
-            return { success: false, message: 'Invalid credentials' };
+            return { success: false, message: 'Incorrect password' };
         }
 
         // Generate JWT token
@@ -124,6 +169,8 @@ const login = async (email, password) => {
     } catch (error) {
         console.error('Login error:', error);
         return { success: false, message: 'Internal server error' };
+    } finally {
+        await session.close();
     }
 };
 

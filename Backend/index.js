@@ -1,5 +1,5 @@
 const express = require('express');
-const { connectMongoDB, connectNeo4j } = require('./src/config/database');
+const { connectDatabase } = require('./src/config/database');
 const authRoutes = require('./src/routes/auth.routes');
 const classroomRoutes = require('./src/routes/classroom.routes');
 const connectionRoutes = require('./src/routes/connection.routes');
@@ -14,9 +14,8 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(express.json());
 
-// Connect to databases
-connectMongoDB();
-connectNeo4j();
+// Connect to database
+connectDatabase();
 
 // CORS middleware
 app.use((req, res, next) => {

@@ -1,177 +1,178 @@
-const Task = require('../models/task.model');
-const Classroom = require('../models/classroom.model');
+const neo4j = require('neo4j-driver');
+require('dotenv').config();
 
-// Create a new task
+const driver = neo4j.driver(
+    process.env.NEO4J_URI,
+    neo4j.auth.basic(process.env.NEO4J_USERNAME, process.env.NEO4J_PASSWORD)
+);
+
 const createTask = async (professorId, classroomId, taskData) => {
+    const session = driver.session();
     try {
-        const classroom = await Classroom.findOne({
-            _id: classroomId,
-            professor: professorId
-        });
+        const result = await session.run(
+            `MATCH (p:User {id: $professorId}), (c:Classroom {id: $classroomId})
+             CREATE (t:Task {
+                id: randomUUID(),
+                title: $title,
+                description: $description,
+                deadline: datetime($deadline),
+                maxScore: $maxScore,
+                createdAt: datetime(),
+                updatedAt: datetime()
+             })
+             CREATE (c)-[:HAS_TASK]->(t)
+             CREATE (p)-[:CREATED]->(t)
+             RETURN t`,
+            {
+                professorId,
+                classroomId,
+                title: taskData.title,
+                description: taskData.description,
+                deadline: taskData.deadline,
+                maxScore: taskData.maxScore
+            }
+        );
 
-        if (!classroom) {
-            return {
-                success: false,
-                message: 'Classroom not found or unauthorized'
-            };
+        if (result.records.length === 0) {
+            return { success: false, message: 'Failed to create task' };
         }
 
-        const task = await Task.create({
-            ...taskData,
-            classroom: classroomId,
-            professor: professorId
-        });
-
-        await task.populate('professor', 'firstName lastName');
-
-        return {
-            success: true,
+        const task = result.records[0].get('t').properties;
+        return { 
+            success: true, 
             message: 'Task created successfully',
             data: task
         };
     } catch (error) {
         console.error('Task creation error:', error);
-        return {
-            success: false,
-            message: 'Failed to create task'
-        };
+        return { success: false, message: 'Internal server error' };
+    } finally {
+        await session.close();
     }
 };
 
-// Get tasks for a classroom
 const getClassroomTasks = async (classroomId, userId, role) => {
+    const session = driver.session();
     try {
-        const classroom = await Classroom.findById(classroomId);
-        if (!classroom) {
-            return {
-                success: false,
-                message: 'Classroom not found'
-            };
-        }
+        let query;
+        let params = { classroomId };
 
-        let tasks;
         if (role === 'professor') {
-            tasks = await Task.find({ classroom: classroomId })
-                .populate('professor', 'firstName lastName')
-                .populate('submissions.student', 'firstName lastName');
+            query = `MATCH (c:Classroom {id: $classroomId})-[:HAS_TASK]->(t:Task)
+                     OPTIONAL MATCH (t)<-[:SUBMITTED]-(s:Submission)
+                     RETURN t, count(s) as submissionCount`;
         } else {
-            tasks = await Task.find({ 
-                classroom: classroomId,
-                $or: [
-                    { dueDate: { $gte: new Date() } },
-                    { 'submissions.student': userId }
-                ]
-            }).populate('professor', 'firstName lastName');
+            query = `MATCH (c:Classroom {id: $classroomId})-[:HAS_TASK]->(t:Task)
+                     OPTIONAL MATCH (t)<-[:SUBMITTED]-(s:Submission {studentId: $userId})
+                     RETURN t, s`;
+            params.userId = userId;
         }
 
-        return {
-            success: true,
-            data: tasks
+        const result = await session.run(query, params);
+        
+        const tasks = result.records.map(record => {
+            const task = record.get('t').properties;
+            if (role === 'professor') {
+                return {
+                    ...task,
+                    submissionCount: record.get('submissionCount').toNumber()
+                };
+            } else {
+                const submission = record.get('s') ? record.get('s').properties : null;
+                return {
+                    ...task,
+                    submission
+                };
+            }
+        });
+
+        return { 
+            success: true, 
+            data: tasks 
         };
     } catch (error) {
-        console.error('Task retrieval error:', error);
-        return {
-            success: false,
-            message: 'Failed to retrieve tasks'
-        };
+        console.error('Tasks retrieval error:', error);
+        return { success: false, message: 'Internal server error' };
+    } finally {
+        await session.close();
     }
 };
 
-// Submit task
-const submitTask = async (taskId, studentId, submission) => {
+const submitTask = async (taskId, studentId, submissionData) => {
+    const session = driver.session();
     try {
-        const task = await Task.findById(taskId);
-        if (!task) {
-            return {
-                success: false,
-                message: 'Task not found'
-            };
-        }
-
-        if (task.dueDate < new Date()) {
-            return {
-                success: false,
-                message: 'Task submission deadline has passed'
-            };
-        }
-
-        const submissionIndex = task.submissions.findIndex(
-            sub => sub.student.toString() === studentId.toString()
+        const result = await session.run(
+            `MATCH (t:Task {id: $taskId}), (s:User {id: $studentId})
+             CREATE (sub:Submission {
+                id: randomUUID(),
+                content: $content,
+                submittedAt: datetime(),
+                status: 'submitted',
+                studentId: $studentId
+             })
+             CREATE (s)-[:SUBMITTED]->(sub)
+             CREATE (sub)-[:FOR_TASK]->(t)
+             RETURN sub`,
+            {
+                taskId,
+                studentId,
+                content: submissionData.content
+            }
         );
 
-        if (submissionIndex >= 0) {
-            task.submissions[submissionIndex] = {
-                student: studentId,
-                content: submission.content,
-                submittedAt: Date.now()
-            };
-        } else {
-            task.submissions.push({
-                student: studentId,
-                content: submission.content,
-                submittedAt: Date.now()
-            });
+        if (result.records.length === 0) {
+            return { success: false, message: 'Failed to submit task' };
         }
 
-        await task.save();
-
-        return {
-            success: true,
+        const submission = result.records[0].get('sub').properties;
+        return { 
+            success: true, 
             message: 'Task submitted successfully',
-            data: task
+            data: submission
         };
     } catch (error) {
         console.error('Task submission error:', error);
-        return {
-            success: false,
-            message: 'Failed to submit task'
-        };
+        return { success: false, message: 'Internal server error' };
+    } finally {
+        await session.close();
     }
 };
 
-// Grade submission
 const gradeSubmission = async (taskId, studentId, professorId, grade, feedback) => {
+    const session = driver.session();
     try {
-        const task = await Task.findOne({
-            _id: taskId,
-            professor: professorId
-        });
-
-        if (!task) {
-            return {
-                success: false,
-                message: 'Task not found or unauthorized'
-            };
-        }
-
-        const submission = task.submissions.find(
-            sub => sub.student.toString() === studentId.toString()
+        const result = await session.run(
+            `MATCH (t:Task {id: $taskId})<-[:FOR_TASK]-(sub:Submission {studentId: $studentId})
+             SET sub.grade = $grade,
+                 sub.feedback = $feedback,
+                 sub.gradedAt = datetime(),
+                 sub.status = 'graded',
+                 sub.gradedBy = $professorId
+             RETURN sub`,
+            {
+                taskId,
+                studentId,
+                professorId,
+                grade,
+                feedback
+            }
         );
 
-        if (!submission) {
-            return {
-                success: false,
-                message: 'Submission not found'
-            };
+        if (result.records.length === 0) {
+            return { success: false, message: 'Submission not found' };
         }
 
-        submission.grade = grade;
-        submission.feedback = feedback;
-        submission.gradedAt = Date.now();
-
-        await task.save();
-
-        return {
-            success: true,
+        const submission = result.records[0].get('sub').properties;
+        return { 
+            success: true, 
             message: 'Submission graded successfully',
-            data: task
+            data: submission
         };
     } catch (error) {
         console.error('Grading error:', error);
-        return {
-            success: false,
-            message: 'Failed to grade submission'
-        };
+        return { success: false, message: 'Internal server error' };
+    } finally {
+        await session.close();
     }
 };
 

@@ -1,265 +1,150 @@
-const Classroom = require('../models/classroom.model');
-const User = require('../models/user.model');
+const neo4j = require('neo4j-driver');
+require('dotenv').config();
 
-// Create a new classroom
+const driver = neo4j.driver(
+    process.env.NEO4J_URI,
+    neo4j.auth.basic(process.env.NEO4J_USERNAME, process.env.NEO4J_PASSWORD)
+);
+
 const createClassroom = async (professorId, classroomData) => {
+    const session = driver.session();
     try {
-        const classroom = await Classroom.create({
-            ...classroomData,
-            professor: professorId
-        });
+        const result = await session.run(
+            `MATCH (p:User {id: $professorId, role: 'professor'})
+             CREATE (c:Classroom {
+                id: randomUUID(),
+                name: $name,
+                description: $description,
+                code: $code,
+                isActive: $isActive,
+                createdAt: datetime(),
+                updatedAt: datetime()
+             })
+             CREATE (p)-[:TEACHES]->(c)
+             RETURN c`,
+            {
+                professorId,
+                name: classroomData.name,
+                description: classroomData.description,
+                code: classroomData.code,
+                isActive: classroomData.isActive || true
+            }
+        );
 
-        await classroom.populate('professor', 'firstName lastName');
+        if (result.records.length === 0) {
+            return { success: false, message: 'Failed to create classroom' };
+        }
 
-        return {
-            success: true,
-            message: 'Classroom created successfully',
-            data: classroom
-        };
+        const classroom = result.records[0].get('c').properties;
+        return { success: true, classroom };
     } catch (error) {
         console.error('Classroom creation error:', error);
-        return {
-            success: false,
-            message: 'Failed to create classroom'
-        };
+        return { success: false, message: 'Internal server error' };
+    } finally {
+        await session.close();
     }
 };
 
-// Get classroom by ID
-const getClassroomById = async (classroomId, userId) => {
+const enrollStudent = async (classroomId, studentId) => {
+    const session = driver.session();
     try {
-        const classroom = await Classroom.findById(classroomId)
-            .populate('professor', 'firstName lastName')
-            .populate('enrolledStudents', 'firstName lastName');
-
-        if (!classroom) {
-            return {
-                success: false,
-                message: 'Classroom not found'
-            };
-        }
-
-        // Check if user has access to the classroom
-        const isEnrolled = classroom.enrolledStudents.some(student => 
-            student._id.toString() === userId.toString()
+        const result = await session.run(
+            `MATCH (c:Classroom {id: $classroomId}), (s:User {id: $studentId, role: 'student'})
+             CREATE (s)-[:ENROLLED_IN]->(c)
+             RETURN c, s`,
+            { classroomId, studentId }
         );
-        const isProfessor = classroom.professor._id.toString() === userId.toString();
 
-        if (!isEnrolled && !isProfessor) {
-            return {
-                success: false,
-                message: 'Not authorized to access this classroom'
-            };
+        if (result.records.length === 0) {
+            return { success: false, message: 'Failed to enroll student' };
         }
 
-        return {
-            success: true,
-            data: classroom
-        };
-    } catch (error) {
-        console.error('Classroom retrieval error:', error);
-        return {
-            success: false,
-            message: 'Failed to retrieve classroom'
-        };
-    }
-};
-
-// Get all classrooms (filtered by role)
-const getAllClassrooms = async (userId, role) => {
-    try {
-        let classrooms;
-        if (role === 'professor') {
-            classrooms = await Classroom.find({ professor: userId })
-                .populate('professor', 'firstName lastName')
-                .populate('enrolledStudents', 'firstName lastName');
-        } else {
-            classrooms = await Classroom.find({ enrolledStudents: userId })
-                .populate('professor', 'firstName lastName');
-        }
-
-        return {
-            success: true,
-            data: classrooms
-        };
-    } catch (error) {
-        console.error('Classrooms retrieval error:', error);
-        return {
-            success: false,
-            message: 'Failed to retrieve classrooms'
-        };
-    }
-};
-
-// Update classroom
-const updateClassroom = async (classroomId, professorId, updates) => {
-    try {
-        const classroom = await Classroom.findOne({
-            _id: classroomId,
-            professor: professorId
-        });
-
-        if (!classroom) {
-            return {
-                success: false,
-                message: 'Classroom not found or unauthorized'
-            };
-        }
-
-        Object.assign(classroom, updates);
-        await classroom.save();
-        await classroom.populate('professor', 'firstName lastName');
-
-        return {
-            success: true,
-            message: 'Classroom updated successfully',
-            data: classroom
-        };
-    } catch (error) {
-        console.error('Classroom update error:', error);
-        return {
-            success: false,
-            message: 'Failed to update classroom'
-        };
-    }
-};
-
-// Delete classroom
-const deleteClassroom = async (classroomId, professorId) => {
-    try {
-        const classroom = await Classroom.findOneAndDelete({
-            _id: classroomId,
-            professor: professorId
-        });
-
-        if (!classroom) {
-            return {
-                success: false,
-                message: 'Classroom not found or unauthorized'
-            };
-        }
-
-        return {
-            success: true,
-            message: 'Classroom deleted successfully'
-        };
-    } catch (error) {
-        console.error('Classroom deletion error:', error);
-        return {
-            success: false,
-            message: 'Failed to delete classroom'
-        };
-    }
-};
-
-// Enroll student in classroom
-const enrollStudent = async (classroomId, studentId, code) => {
-    try {
-        const classroom = await Classroom.findOne({ _id: classroomId, code });
-
-        if (!classroom) {
-            return {
-                success: false,
-                message: 'Invalid classroom or enrollment code'
-            };
-        }
-
-        if (classroom.enrolledStudents.includes(studentId)) {
-            return {
-                success: false,
-                message: 'Student already enrolled in this classroom'
-            };
-        }
-
-        classroom.enrolledStudents.push(studentId);
-        await classroom.save();
-        await classroom.populate('professor', 'firstName lastName');
-
-        return {
-            success: true,
-            message: 'Enrolled successfully',
-            data: classroom
-        };
+        return { success: true, message: 'Student enrolled successfully' };
     } catch (error) {
         console.error('Student enrollment error:', error);
-        return {
-            success: false,
-            message: 'Failed to enroll student'
-        };
+        return { success: false, message: 'Internal server error' };
+    } finally {
+        await session.close();
     }
 };
 
-// Unenroll student from classroom
-const unenrollStudent = async (classroomId, studentId) => {
+const getClassroomDetails = async (classroomId) => {
+    const session = driver.session();
     try {
-        const classroom = await Classroom.findById(classroomId);
+        const result = await session.run(
+            `MATCH (c:Classroom {id: $classroomId})
+             OPTIONAL MATCH (p:User)-[:TEACHES]->(c)
+             OPTIONAL MATCH (s:User)-[:ENROLLED_IN]->(c)
+             RETURN c, collect(DISTINCT p) as professors, collect(DISTINCT s) as students`,
+            { classroomId }
+        );
 
-        if (!classroom) {
-            return {
-                success: false,
-                message: 'Classroom not found'
-            };
+        if (result.records.length === 0) {
+            return { success: false, message: 'Classroom not found' };
         }
 
-        const studentIndex = classroom.enrolledStudents.indexOf(studentId);
-        if (studentIndex === -1) {
-            return {
-                success: false,
-                message: 'Student not enrolled in this classroom'
-            };
-        }
-
-        classroom.enrolledStudents.splice(studentIndex, 1);
-        await classroom.save();
+        const classroom = result.records[0].get('c').properties;
+        const professors = result.records[0].get('professors').map(p => p.properties);
+        const students = result.records[0].get('students').map(s => s.properties);
 
         return {
             success: true,
-            message: 'Unenrolled successfully'
+            classroom: {
+                ...classroom,
+                professors,
+                students
+            }
         };
     } catch (error) {
-        console.error('Student unenrollment error:', error);
-        return {
-            success: false,
-            message: 'Failed to unenroll student'
-        };
+        console.error('Classroom details error:', error);
+        return { success: false, message: 'Internal server error' };
+    } finally {
+        await session.close();
     }
 };
 
-// Get enrolled students
-const getEnrolledStudents = async (classroomId, professorId) => {
+const getStudentClassrooms = async (studentId) => {
+    const session = driver.session();
     try {
-        const classroom = await Classroom.findOne({
-            _id: classroomId,
-            professor: professorId
-        }).populate('enrolledStudents', 'firstName lastName email');
+        const result = await session.run(
+            `MATCH (s:User {id: $studentId})-[:ENROLLED_IN]->(c:Classroom)
+             RETURN collect(c) as classrooms`,
+            { studentId }
+        );
 
-        if (!classroom) {
-            return {
-                success: false,
-                message: 'Classroom not found or unauthorized'
-            };
-        }
-
-        return {
-            success: true,
-            data: classroom.enrolledStudents
-        };
+        const classrooms = result.records[0].get('classrooms').map(c => c.properties);
+        return { success: true, classrooms };
     } catch (error) {
-        console.error('Enrolled students retrieval error:', error);
-        return {
-            success: false,
-            message: 'Failed to retrieve enrolled students'
-        };
+        console.error('Student classrooms error:', error);
+        return { success: false, message: 'Internal server error' };
+    } finally {
+        await session.close();
+    }
+};
+
+const getProfessorClassrooms = async (professorId) => {
+    const session = driver.session();
+    try {
+        const result = await session.run(
+            `MATCH (p:User {id: $professorId})-[:TEACHES]->(c:Classroom)
+             RETURN collect(c) as classrooms`,
+            { professorId }
+        );
+
+        const classrooms = result.records[0].get('classrooms').map(c => c.properties);
+        return { success: true, classrooms };
+    } catch (error) {
+        console.error('Professor classrooms error:', error);
+        return { success: false, message: 'Internal server error' };
+    } finally {
+        await session.close();
     }
 };
 
 module.exports = {
     createClassroom,
-    getClassroomById,
-    getAllClassrooms,
-    updateClassroom,
-    deleteClassroom,
     enrollStudent,
-    unenrollStudent,
-    getEnrolledStudents
+    getClassroomDetails,
+    getStudentClassrooms,
+    getProfessorClassrooms
 };

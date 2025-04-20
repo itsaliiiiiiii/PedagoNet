@@ -1,24 +1,28 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth.middleware');
-const Post = require('../models/post.model');
+const { createPost, getPosts, getPostById, updatePost, deletePost } = require('../services/post.service');
+const { getConnections } = require('../services/neo4j.service');
+
 
 // Create a new post
 router.post('/', authenticateToken, async (req, res) => {
     try {
-        const post = await Post.create({
-            author: req.user._id,
-            content: req.body.content,
-            visibility: req.body.visibility || 'public',
-            attachments: req.body.attachments
-        });
+        const result = await createPost(
+            req.user._id.toString(),
+            req.body.content,
+            req.body.visibility || 'public',
+            req.body.attachments || []
+        );
 
-        await post.populate('author', 'firstName lastName');
+        if (!result.success) {
+            return res.status(500).json(result);
+        }
 
         res.status(201).json({
             success: true,
             message: 'Post created successfully',
-            post
+            post: result.post
         });
     } catch (error) {
         console.error('Post creation error:', error);
@@ -29,26 +33,21 @@ router.post('/', authenticateToken, async (req, res) => {
 // Get all posts (with visibility filtering)
 router.get('/', authenticateToken, async (req, res) => {
     try {
-        const query = {
-            $or: [
-                { visibility: 'public' },
-                { author: req.user._id },
-                {
-                    visibility: 'connections',
-                    author: { $in: await getConnectedUserIds(req.user._id) }
-                }
-            ]
-        };
+        const connectedUserIds = await getConnectedUserIds(req.user._id);
+        const result = await getPosts(
+            req.user._id.toString(),
+            connectedUserIds,
+            parseInt(req.query.limit) || 10,
+            parseInt(req.query.skip) || 0
+        );
 
-        const posts = await Post.find(query)
-            .sort({ createdAt: -1 })
-            .populate('author', 'firstName lastName')
-            .limit(parseInt(req.query.limit) || 10)
-            .skip(parseInt(req.query.skip) || 0);
+        if (!result.success) {
+            return res.status(500).json(result);
+        }
 
         res.json({
             success: true,
-            posts
+            posts: result.posts
         });
     } catch (error) {
         console.error('Posts retrieval error:', error);
@@ -59,18 +58,16 @@ router.get('/', authenticateToken, async (req, res) => {
 // Get a specific post
 router.get('/:id', authenticateToken, async (req, res) => {
     try {
-        const post = await Post.findById(req.params.id)
-            .populate('author', 'firstName lastName');
+        const result = await getPostById(req.params.id);
 
-        if (!post) {
-            return res.status(404).json({
-                success: false,
-                message: 'Post not found'
-            });
+        if (!result.success) {
+            return res.status(404).json(result);
         }
 
+        const post = result.post;
+
         // Check visibility permissions
-        if (post.visibility === 'private' && post.author.toString() !== req.user._id.toString()) {
+        if (post.visibility === 'private' && post.author.id !== req.user._id.toString()) {
             return res.status(403).json({
                 success: false,
                 message: 'Not authorized to view this post'
@@ -78,8 +75,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
         }
 
         if (post.visibility === 'connections' && 
-            !(await isConnected(post.author, req.user._id)) && 
-            post.author.toString() !== req.user._id.toString()) {
+            !(await isConnected(post.author.id, req.user._id.toString())) && 
+            post.author.id !== req.user._id.toString()) {
             return res.status(403).json({
                 success: false,
                 message: 'Not authorized to view this post'
@@ -99,34 +96,24 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // Update a post
 router.put('/:id', authenticateToken, async (req, res) => {
     try {
-        const post = await Post.findById(req.params.id);
+        const result = await updatePost(
+            req.params.id,
+            req.user._id.toString(),
+            {
+                content: req.body.content,
+                visibility: req.body.visibility,
+                attachments: req.body.attachments
+            }
+        );
 
-        if (!post) {
-            return res.status(404).json({
-                success: false,
-                message: 'Post not found'
-            });
+        if (!result.success) {
+            return res.status(result.message.includes('not found') ? 404 : 403).json(result);
         }
-
-        if (post.author.toString() !== req.user._id.toString()) {
-            return res.status(403).json({
-                success: false,
-                message: 'Not authorized to update this post'
-            });
-        }
-
-        post.content = req.body.content || post.content;
-        post.visibility = req.body.visibility || post.visibility;
-        post.attachments = req.body.attachments || post.attachments;
-        post.updatedAt = Date.now();
-
-        await post.save();
-        await post.populate('author', 'firstName lastName');
 
         res.json({
             success: true,
             message: 'Post updated successfully',
-            post
+            post: result.post
         });
     } catch (error) {
         console.error('Post update error:', error);
@@ -137,23 +124,11 @@ router.put('/:id', authenticateToken, async (req, res) => {
 // Delete a post
 router.delete('/:id', authenticateToken, async (req, res) => {
     try {
-        const post = await Post.findById(req.params.id);
+        const result = await deletePost(req.params.id, req.user._id.toString());
 
-        if (!post) {
-            return res.status(404).json({
-                success: false,
-                message: 'Post not found'
-            });
+        if (!result.success) {
+            return res.status(result.message.includes('not found') ? 404 : 403).json(result);
         }
-
-        if (post.author.toString() !== req.user._id.toString()) {
-            return res.status(403).json({
-                success: false,
-                message: 'Not authorized to delete this post'
-            });
-        }
-
-        await post.remove();
 
         res.json({
             success: true,
@@ -167,32 +142,14 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
 // Helper function to get connected user IDs
 async function getConnectedUserIds(userId) {
-    const Connection = require('../models/connection.model');
-    const connections = await Connection.find({
-        $or: [
-            { sender: userId },
-            { receiver: userId }
-        ],
-        status: 'accepted'
-    });
-
-    return connections.map(conn => 
-        conn.sender.toString() === userId.toString() ? conn.receiver : conn.sender
-    );
+    const connections = await getConnections(userId.toString(), 'accepted');
+    return connections.map(conn => conn.userId);
 }
 
 // Helper function to check if two users are connected
 async function isConnected(userId1, userId2) {
-    const Connection = require('../models/connection.model');
-    const connection = await Connection.findOne({
-        $or: [
-            { sender: userId1, receiver: userId2 },
-            { sender: userId2, receiver: userId1 }
-        ],
-        status: 'accepted'
-    });
-
-    return !!connection;
+    const connections = await getConnections(userId1.toString());
+    return connections.some(conn => conn.userId === userId2.toString() && conn.status === 'accepted');
 }
 
 module.exports = router;

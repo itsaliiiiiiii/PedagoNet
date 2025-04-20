@@ -1,37 +1,30 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth.middleware');
-const Connection = require('../models/connection.model');
+const { createConnection, updateConnectionStatus, getConnections } = require('../services/neo4j.service');
 
 // Send connection request
 router.post('/request', authenticateToken, async (req, res) => {
     try {
         const { receiverId } = req.body;
-        
-        // Check if connection already exists
-        const existingConnection = await Connection.findOne({
-            $or: [
-                { sender: req.user._id, receiver: receiverId },
-                { sender: receiverId, receiver: req.user._id }
-            ]
-        });
 
-        if (existingConnection) {
+        // Check if connection already exists
+        const existingConnections = await getConnections(req.user._id.toString());
+        if (existingConnections.some(conn => conn.userId === receiverId)) {
             return res.status(400).json({
                 success: false,
                 message: 'Connection already exists'
             });
         }
 
-        const connection = await Connection.create({
-            sender: req.user._id,
-            receiver: receiverId
-        });
+        const success = await createConnection(req.user._id.toString(), receiverId);
+        if (!success) {
+            return res.status(500).json({ success: false, message: 'Failed to create connection' });
+        }
 
         res.status(201).json({
             success: true,
-            message: 'Connection request sent',
-            connection
+            message: 'Connection request sent'
         });
     } catch (error) {
         console.error('Connection request error:', error);
@@ -40,32 +33,24 @@ router.post('/request', authenticateToken, async (req, res) => {
 });
 
 // Accept connection request
-router.put('/accept/:connectionId', authenticateToken, async (req, res) => {
+router.put('/accept/:receiverId', authenticateToken, async (req, res) => {
     try {
-        const connection = await Connection.findById(req.params.connectionId);
-        
-        if (!connection) {
+        const success = await updateConnectionStatus(
+            req.params.receiverId,
+            req.user._id.toString(),
+            'accepted'
+        );
+
+        if (!success) {
             return res.status(404).json({
                 success: false,
                 message: 'Connection request not found'
             });
         }
 
-        if (connection.receiver.toString() !== req.user._id.toString()) {
-            return res.status(403).json({
-                success: false,
-                message: 'Not authorized to accept this connection'
-            });
-        }
-
-        connection.status = 'accepted';
-        connection.updatedAt = Date.now();
-        await connection.save();
-
         res.json({
             success: true,
-            message: 'Connection accepted',
-            connection
+            message: 'Connection accepted'
         });
     } catch (error) {
         console.error('Connection acceptance error:', error);
@@ -73,51 +58,10 @@ router.put('/accept/:connectionId', authenticateToken, async (req, res) => {
     }
 });
 
-// Reject connection request
-router.put('/reject/:connectionId', authenticateToken, async (req, res) => {
-    try {
-        const connection = await Connection.findById(req.params.connectionId);
-        
-        if (!connection) {
-            return res.status(404).json({
-                success: false,
-                message: 'Connection request not found'
-            });
-        }
-
-        if (connection.receiver.toString() !== req.user._id.toString()) {
-            return res.status(403).json({
-                success: false,
-                message: 'Not authorized to reject this connection'
-            });
-        }
-
-        connection.status = 'rejected';
-        connection.updatedAt = Date.now();
-        await connection.save();
-
-        res.json({
-            success: true,
-            message: 'Connection rejected',
-            connection
-        });
-    } catch (error) {
-        console.error('Connection rejection error:', error);
-        res.status(500).json({ success: false, message: 'Internal server error' });
-    }
-});
-
 // Get user's connections
 router.get('/', authenticateToken, async (req, res) => {
     try {
-        const connections = await Connection.find({
-            $or: [
-                { sender: req.user._id },
-                { receiver: req.user._id }
-            ],
-            status: 'accepted'
-        }).populate('sender receiver', 'firstName lastName email');
-
+        const connections = await getConnections(req.user._id.toString(), 'accepted');
         res.json({
             success: true,
             connections
@@ -131,11 +75,7 @@ router.get('/', authenticateToken, async (req, res) => {
 // Get pending connection requests
 router.get('/pending', authenticateToken, async (req, res) => {
     try {
-        const pendingConnections = await Connection.find({
-            receiver: req.user._id,
-            status: 'pending'
-        }).populate('sender', 'firstName lastName email');
-
+        const pendingConnections = await getConnections(req.user._id.toString(), 'pending');
         res.json({
             success: true,
             pendingConnections

@@ -1,5 +1,5 @@
 const { verifyToken } = require('../services/jwt.service');
-const User = require('../models/user.model');
+const { findUserById } = require('../services/user.service');
 
 const authenticateToken = async (req, res, next) => {
     try {
@@ -15,7 +15,7 @@ const authenticateToken = async (req, res, next) => {
             return res.status(403).json({ success: false, message: 'Invalid or expired token' });
         }
 
-        const user = await User.findById(decoded.userId);
+        const user = await findUserById(decoded.userId);
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
