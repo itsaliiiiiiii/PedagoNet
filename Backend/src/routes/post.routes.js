@@ -127,6 +127,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     try {
         const result = await deletePost(req.params.id, req.user.id_user);
 
+        
         if (!result.success) {
             return res.status(result.message.includes('not found') ? 404 : 403).json(result);
         }
