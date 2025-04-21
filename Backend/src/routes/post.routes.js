@@ -99,6 +99,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
         const result = await updatePost(
             req.params.id,
             req.user.id_user,
+
             {
                 content: req.body.content,
                 visibility: req.body.visibility,
