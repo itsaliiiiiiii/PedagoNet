@@ -52,8 +52,8 @@ const getPosts = async (userId, connectedUserIds, limit = 10, skip = 0) => {
     const session = driver.session();
     try {
         const result = await session.run(
-            `MATCH (author:User)-[:AUTHORED]->(p:Post)
-             WHERE author.id_user IN $userIds
+            `MATCH (author:User)-[:AUTHORED]->(p:Post) , (author:User)-[:CONNECTION]->(author2:User)
+             WHERE author2.id_user IN $userIds
              AND (p.visibility = 'public' OR p.visibility = 'connections')
              RETURN p, author
              ORDER BY p.createdAt DESC
@@ -93,7 +93,7 @@ const getPostById = async (postId) => {
     const session = driver.session();
     try {
         const result = await session.run(
-            `MATCH (author:User)-[:AUTHORED]->(p:Post {id: $postId})
+            `MATCH (author:User)-[:AUTHORED]->(p:Post {id_post: $postId})
              RETURN p, author`,
             { postId }
         );
