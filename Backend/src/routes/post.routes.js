@@ -10,8 +10,8 @@ router.post('/', authenticateToken, async (req, res) => {
     try {
         const result = await createPost(
             req.user.id_user,
-            req.body.content,
             req.body.visibility || 'public',
+            req.body.content,
             req.body.attachments || []
         );
 
