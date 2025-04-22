@@ -140,10 +140,52 @@ const getProfessorClassrooms = async (professorId) => {
     }
 };
 
+const getAllClassrooms = async (userId, role) => {
+    const session = driver.session();
+    try {
+        let query;
+        if (role === 'professor') {
+            query = `
+                MATCH (p:User {id_user: $userId})-[:TEACHES]->(c:Classroom)
+                RETURN collect({
+                    id_classroom: c.id_classroom,
+                    name: c.name,
+                    description: c.description,
+                    code: c.code,
+                    isActive: c.isActive
+                }) as classrooms
+            `;
+        } else {
+            query = `
+                MATCH (s:User {id_user: $userId})-[:ENROLLED_IN]->(c:Classroom)
+                RETURN collect({
+                    id_classroom: c.id_classroom,
+                    name: c.name,
+                    description: c.description
+                }) as classrooms
+            `;
+        }
+
+        const result = await session.run(query, { userId });
+        const classrooms = result.records[0].get('classrooms');
+        
+        return {
+            success: true,
+            classrooms: classrooms
+        };
+    } catch (error) {
+        console.error('Classrooms retrieval error:', error);
+        return { success: false, message: 'Internal server error' };
+    } finally {
+        await session.close();
+    }
+};
+
 module.exports = {
     createClassroom,
     enrollStudent,
     getClassroomDetails,
     getStudentClassrooms,
-    getProfessorClassrooms
+    getProfessorClassrooms,
+    getAllClassrooms  // Add this to exports
 };
