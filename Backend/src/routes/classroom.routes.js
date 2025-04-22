@@ -38,7 +38,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // Get all classrooms (filtered by role)
 router.get('/', authenticateToken, async (req, res) => {
     try {
-        const result = await getAllClassrooms(req.user._id, req.user.role);
+        const result = await getAllClassrooms(req.user.id_user, req.user.role);
         res.status(200).json(result);
     } catch (error) {
         console.error('Classrooms retrieval error:', error);
