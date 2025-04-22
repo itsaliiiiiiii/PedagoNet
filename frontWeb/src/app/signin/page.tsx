@@ -1,6 +1,6 @@
 import Link from "next/link"
 import Image from 'next/image';
-import LoginForm from "@/components/loginForm"
+import LoginForm from "@/components/auth/loginForm"
 export default function LoginPage() {
   return (
     <div className="relative min-h-screen w-full">

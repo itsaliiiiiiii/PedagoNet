@@ -1,6 +1,6 @@
 import Link from "next/link"
 import Image from 'next/image';
-import OtpForm from "@/components/OTPFrom";
+import OtpForm from "@/components/auth/OTPFrom";
 export default function LoginPage() {
   return (
     <div className="relative min-h-screen w-full">
