@@ -1,9 +1,7 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
-import Link from "next/link"
 import {
   Bell,
   BookOpen,
@@ -27,6 +25,8 @@ import {
 } from "lucide-react"
 import Logo from "@/components/logo"
 import { useMediaQuery } from "@/hooks/use-mobile"
+import DesktopNav from "@/components/navs/desktopnav"
+import MobileNav from "@/components/navs/mobilenav"
 
 // Types
 type DiscussionType = "individual" | "group" | "class" | "announcement"
@@ -425,52 +425,7 @@ export default function DiscussionsPage() {
   return (
     <div className="relative min-h-screen bg-gray-100 dark:bg-gray-900">
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-14">
-            {/* Logo and Search */}
-            <div className="flex items-center gap-3 flex-1">
-              <Link href="/home" className="flex items-center gap-2">
-                <Logo />
-                <span className="hidden sm:inline text-lg font-semibold text-gray-900 dark:text-white">
-                  SchoolConnect
-                </span>
-              </Link>
-              <div className="relative flex-1 max-w-xs ml-2">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Rechercher..."
-                  className="w-full pl-10 pr-4 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-
-            {/* Navigation */}
-            <nav className="flex items-center gap-1 sm:gap-2">
-              <NavItem icon={<Home />} label="Accueil" href="/home" />
-              <NavItem icon={<Users />} label="Réseau" href="/network" />
-              <NavItem icon={<MessageCircle />} label="Discussions" href="/discussions" isActive />
-              <NavItem icon={<Bell />} label="Notifications" href="/notifications" badge="3" />
-              <div className="flex items-center pl-2 border-l border-gray-300 dark:border-gray-600">
-                <div className="h-7 w-7 rounded-full bg-blue-100 dark:bg-gray-700 flex items-center justify-center">
-                  <User className="h-4 w-4 text-blue-600 dark:text-gray-300" />
-                </div>
-                <div className="hidden sm:flex items-center text-xs text-gray-700 dark:text-gray-300">
-                  <span className="mx-1">Moi</span>
-                  <ChevronDown className="h-4 w-4" />
-                </div>
-              </div>
-              <div className="hidden sm:flex items-center gap-1 pl-2 border-l border-gray-300 dark:border-gray-600">
-                <div className="flex flex-col items-center">
-                  <Grid className="h-5 w-5 text-gray-600 dark:text-gray-300" />
-                  <span className="text-xs text-gray-600 dark:text-gray-300">Apps</span>
-                </div>
-              </div>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <DesktopNav/>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -1118,15 +1073,7 @@ export default function DiscussionsPage() {
           </div>
         </div>
       )}
-
-      {/* Mobile Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-2 flex justify-between">
-        <NavButton icon={<Home className="h-6 w-6" />} label="Accueil" href="/home" />
-        <NavButton icon={<Users className="h-6 w-6" />} label="Réseau" href="/network" />
-        <NavButton icon={<MessageCircle className="h-6 w-6" />} label="Discussions" href="/discussions" isActive />
-        <NavButton icon={<Bell className="h-6 w-6" />} label="Notifications" href="/notifications" badge="3" />
-        <NavButton icon={<User className="h-6 w-6" />} label="Profil" href="/profile" />
-      </nav>
+      <MobileNav/>
     </div>
   )
 }
@@ -1230,49 +1177,5 @@ function DiscussionItem({ discussion, isActive, onClick }: { discussion: Discuss
         </div>
       </div>
     </li>
-  )
-}
-
-// Component for Navigation Item
-function NavItem({ icon, label, isActive = false, badge, href = "#" }: { icon: React.ReactNode; label: string; isActive?: boolean; badge?: string; href?: string }) {
-  return (
-    <Link
-      href={href}
-      className={`flex flex-col items-center justify-center px-1 sm:px-3 py-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-        isActive ? "text-blue-600 dark:text-blue-400 bg-gray-100 dark:bg-gray-700" : "text-gray-500 dark:text-gray-400"
-      }`}
-    >
-      <div className="relative">
-        {icon}
-        {badge && (
-          <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center shadow-sm">
-            {badge}
-          </div>
-        )}
-      </div>
-      <span className="hidden sm:block text-xs mt-0.5">{label}</span>
-    </Link>
-  )
-}
-
-// Component for Mobile Navigation Button
-function NavButton({ icon, label, isActive = false, badge, href = "#" }: { icon: React.ReactNode; label: string; isActive?: boolean; badge?: string; href?: string }) {
-  return (
-    <Link
-      href={href}
-      className={`flex flex-col items-center justify-center ${
-        isActive ? "text-blue-600 dark:text-blue-400" : "text-gray-600 dark:text-gray-400"
-      }`}
-    >
-      <div className="relative">
-        {icon}
-        {badge && (
-          <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center shadow-sm">
-            {badge}
-          </div>
-        )}
-      </div>
-      <span className="text-xs mt-1">{label}</span>
-    </Link>
   )
 }

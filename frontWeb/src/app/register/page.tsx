@@ -1,6 +1,6 @@
 import Link from "next/link"
 import Image from "next/image"
-import RegisterForm from "@/components/registerForm"
+import RegisterForm from "@/components/auth/registerForm"
 export default function RegisterPage() {
   return (
     <div className="relative min-h-screen w-full">
