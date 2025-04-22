@@ -181,11 +181,109 @@ const getAllClassrooms = async (userId, role) => {
     }
 };
 
+const updateClassroom = async (classroomId, professorId, updateData) => {
+    const session = driver.session();
+    try {
+        // First verify the professor owns this classroom
+        const verifyResult = await session.run(
+            `MATCH (p:User {id_user: $professorId})-[:TEACHES]->(c:Classroom {id_classroom: $classroomId})
+             RETURN c`,
+            { professorId, classroomId }
+        );
+
+        if (verifyResult.records.length === 0) {
+            return { 
+                success: false, 
+                message: 'Classroom not found or you do not have permission to update it' 
+            };
+        }
+
+        // Build update query
+        const updates = [];
+        const params = { classroomId, professorId };
+
+        // Only allow updating specific fields
+        const allowedUpdates = ['name', 'description', 'isActive'];
+        Object.entries(updateData).forEach(([key, value]) => {
+            if (allowedUpdates.includes(key)) {
+                updates.push(`c.${key} = $${key}`);
+                params[key] = value;
+            }
+        });
+
+        // Add timestamp
+        updates.push('c.updatedAt = datetime()');
+
+        const result = await session.run(
+            `MATCH (c:Classroom {id_classroom: $classroomId})
+             SET ${updates.join(', ')}
+             RETURN c`,
+            params
+        );
+
+        const updatedClassroom = result.records[0].get('c').properties;
+        return { 
+            success: true, 
+            message: 'Classroom updated successfully',
+            classroom: updatedClassroom 
+        };
+    } catch (error) {
+        console.error('Classroom update error:', error);
+        return { success: false, message: 'Internal server error' };
+    } finally {
+        await session.close();
+    }
+};
+
+const deleteClassroom = async (classroomId, professorId) => {
+    const session = driver.session();
+    try {
+        // First verify the professor owns this classroom
+        const verifyResult = await session.run(
+            `MATCH (p:User {id_user: $professorId})-[:TEACHES]->(c:Classroom {id_classroom: $classroomId})
+             RETURN c`,
+            { professorId, classroomId }
+        );
+
+        if (verifyResult.records.length === 0) {
+            return { 
+                success: false, 
+                message: 'Classroom not found or you do not have permission to delete it' 
+            };
+        }
+
+        // Delete all tasks, their relationships, and the classroom
+        const result = await session.run(
+            `MATCH (c:Classroom {id_classroom: $classroomId})
+             OPTIONAL MATCH (c)-[:HAS_TASK]->(t:Task)
+             OPTIONAL MATCH (t)-[tr]-()  // Get all task relationships
+             OPTIONAL MATCH (c)-[cr]-()  // Get all classroom relationships
+             DELETE tr, t, cr, c
+             RETURN count(c) as deleted`,
+            { classroomId }
+        );
+
+        const deletedCount = result.records[0].get('deleted').toNumber();
+        
+        return { 
+            success: deletedCount > 0, 
+            message: deletedCount > 0 ? 'Classroom and associated tasks deleted successfully' : 'Failed to delete classroom'
+        };
+    } catch (error) {
+        console.error('Classroom deletion error:', error);
+        return { success: false, message: 'Internal server error' };
+    } finally {
+        await session.close();
+    }
+};
+
 module.exports = {
     createClassroom,
     enrollStudent,
     getClassroomDetails,
     getStudentClassrooms,
     getProfessorClassrooms,
-    getAllClassrooms  // Add this to exports
+    getAllClassrooms,
+    updateClassroom,
+    deleteClassroom  // Add this to exports
 };

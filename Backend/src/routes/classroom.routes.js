@@ -49,7 +49,7 @@ router.get('/', authenticateToken, async (req, res) => {
 // Update classroom (Professor only)
 router.put('/:id', authenticateToken, checkProfessorRole, async (req, res) => {
     try {
-        const result = await updateClassroom(req.params.id, req.user._id, req.body);
+        const result = await updateClassroom(req.params.id, req.user.id_user, req.body);
         res.status(result.success ? 200 : 400).json(result);
     } catch (error) {
         console.error('Classroom update error:', error);
@@ -60,7 +60,7 @@ router.put('/:id', authenticateToken, checkProfessorRole, async (req, res) => {
 // Delete classroom (Professor only)
 router.delete('/:id', authenticateToken, checkProfessorRole, async (req, res) => {
     try {
-        const result = await deleteClassroom(req.params.id, req.user._id);
+        const result = await deleteClassroom(req.params.id, req.user.id_user);
         res.status(result.success ? 200 : 400).json(result);
     } catch (error) {
         console.error('Classroom deletion error:', error);
