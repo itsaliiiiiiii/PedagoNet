@@ -71,7 +71,7 @@ router.delete('/:id', authenticateToken, checkProfessorRole, async (req, res) =>
 // Enroll student in classroom
 router.post('/:id/enroll', authenticateToken, async (req, res) => {
     try {
-        const result = await enrollStudent(req.params.id, req.user._id, req.body.code);
+        const result = await enrollStudent(req.params.id, req.user.id_user, req.body.code);
         res.status(result.success ? 200 : 400).json(result);
     } catch (error) {
         console.error('Student enrollment error:', error);
@@ -82,7 +82,7 @@ router.post('/:id/enroll', authenticateToken, async (req, res) => {
 // Unenroll student from classroom
 router.post('/:id/unenroll', authenticateToken, async (req, res) => {
     try {
-        const result = await unenrollStudent(req.params.id, req.user._id);
+        const result = await unenrollStudent(req.params.id, req.user.id_user);
         res.status(result.success ? 200 : 400).json(result);
     } catch (error) {
         console.error('Student unenrollment error:', error);
@@ -93,7 +93,7 @@ router.post('/:id/unenroll', authenticateToken, async (req, res) => {
 // Get enrolled students in a classroom
 router.get('/:id/students', authenticateToken, async (req, res) => {
     try {
-        const result = await getEnrolledStudents(req.params.id, req.user._id);
+        const result = await getEnrolledStudents(req.params.id, req.user.id_user);
         res.status(result.success ? 200 : 400).json(result);
     } catch (error) {
         console.error('Enrolled students retrieval error:', error);

@@ -44,9 +44,32 @@ const createClassroom = async (professorId, classroomData) => {
     }
 };
 
-const enrollStudent = async (classroomId, studentId) => {
+const enrollStudent = async (classroomId, studentId, code) => {
     const session = driver.session();
     try {
+        // First verify the classroom exists and code matches
+        const verifyResult = await session.run(
+            `MATCH (c:Classroom {id_classroom: $classroomId, code: $code})
+             RETURN c`,
+            { classroomId, code }
+        );
+
+        if (verifyResult.records.length === 0) {
+            return { success: false, message: 'Invalid classroom code or classroom not found' };
+        }
+
+        // Check if student is already enrolled
+        const checkEnrollment = await session.run(
+            `MATCH (s:User {id_user: $studentId})-[r:ENROLLED_IN]->(c:Classroom {id_classroom: $classroomId})
+             RETURN r`,
+            { classroomId, studentId }
+        );
+
+        if (checkEnrollment.records.length > 0) {
+            return { success: false, message: 'Student is already enrolled in this classroom' };
+        }
+
+        // Enroll the student
         const result = await session.run(
             `MATCH (c:Classroom {id_classroom: $classroomId}), (s:User {id_user: $studentId, role: 'student'})
              CREATE (s)-[:ENROLLED_IN]->(c)
@@ -54,13 +77,70 @@ const enrollStudent = async (classroomId, studentId) => {
             { classroomId, studentId }
         );
 
-        if (result.records.length === 0) {
-            return { success: false, message: 'Failed to enroll student' };
-        }
-
         return { success: true, message: 'Student enrolled successfully' };
     } catch (error) {
         console.error('Student enrollment error:', error);
+        return { success: false, message: 'Internal server error' };
+    } finally {
+        await session.close();
+    }
+};
+
+const unenrollStudent = async (classroomId, studentId) => {
+    const session = driver.session();
+    try {
+        const result = await session.run(
+            `MATCH (s:User {id_user: $studentId})-[r:ENROLLED_IN]->(c:Classroom {id_classroom: $classroomId})
+             DELETE r
+             RETURN count(r) as deletedCount`,
+            { classroomId, studentId }
+        );
+
+        const deletedCount = result.records[0].get('deletedCount').toNumber();
+        if (deletedCount === 0) {
+            return { success: false, message: 'Student is not enrolled in this classroom' };
+        }
+
+        return { success: true, message: 'Student unenrolled successfully' };
+    } catch (error) {
+        console.error('Student unenrollment error:', error);
+        return { success: false, message: 'Internal server error' };
+    } finally {
+        await session.close();
+    }
+};
+
+const getEnrolledStudents = async (classroomId, userId) => {
+    const session = driver.session();
+    try {
+        // First verify user has access to this classroom (either as professor or enrolled student)
+        const accessCheck = await session.run(
+            `MATCH (u:User {id_user: $userId})
+             MATCH (c:Classroom {id_classroom: $classroomId})
+             WHERE (u)-[:TEACHES]->(c) OR (u)-[:ENROLLED_IN]->(c)
+             RETURN c`,
+            { classroomId, userId }
+        );
+
+        if (accessCheck.records.length === 0) {
+            return { success: false, message: 'Access denied or classroom not found' };
+        }
+
+        const result = await session.run(
+            `MATCH (s:User)-[:ENROLLED_IN]->(c:Classroom {id_classroom: $classroomId})
+             RETURN collect({
+                id_user: s.id_user,
+                firstName: s.firstName,
+                lastName: s.lastName,
+                email: s.email
+             }) as students`,
+            { classroomId }
+        );
+
+        const students = result.records[0].get('students');
+        return { success: true, students };
+    } catch (error) {
+        console.error('Enrolled students retrieval error:', error);
         return { success: false, message: 'Internal server error' };
     } finally {
         await session.close();
@@ -285,5 +365,7 @@ module.exports = {
     getProfessorClassrooms,
     getAllClassrooms,
     updateClassroom,
-    deleteClassroom  // Add this to exports
+    deleteClassroom, getEnrolledStudents
+    , unenrollStudent
+    
 };
