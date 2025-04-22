@@ -10,9 +10,9 @@ const createClassroom = async (professorId, classroomData) => {
     const session = driver.session();
     try {
         const result = await session.run(
-            `MATCH (p:User {id: $professorId, role: 'professor'})
+            `MATCH (p:User {id_user: $professorId, role: 'professor'})
              CREATE (c:Classroom {
-                id: randomUUID(),
+                id_classroom: randomUUID(),
                 name: $name,
                 description: $description,
                 code: $code,
@@ -30,7 +30,6 @@ const createClassroom = async (professorId, classroomData) => {
                 isActive: classroomData.isActive || true
             }
         );
-
         if (result.records.length === 0) {
             return { success: false, message: 'Failed to create classroom' };
         }
@@ -49,7 +48,7 @@ const enrollStudent = async (classroomId, studentId) => {
     const session = driver.session();
     try {
         const result = await session.run(
-            `MATCH (c:Classroom {id: $classroomId}), (s:User {id: $studentId, role: 'student'})
+            `MATCH (c:Classroom {id_classroom: $classroomId}), (s:User {id_user: $studentId, role: 'student'})
              CREATE (s)-[:ENROLLED_IN]->(c)
              RETURN c, s`,
             { classroomId, studentId }
@@ -72,7 +71,7 @@ const getClassroomDetails = async (classroomId) => {
     const session = driver.session();
     try {
         const result = await session.run(
-            `MATCH (c:Classroom {id: $classroomId})
+            `MATCH (c:Classroom {id_classroom: $classroomId})
              OPTIONAL MATCH (p:User)-[:TEACHES]->(c)
              OPTIONAL MATCH (s:User)-[:ENROLLED_IN]->(c)
              RETURN c, collect(DISTINCT p) as professors, collect(DISTINCT s) as students`,
@@ -107,7 +106,7 @@ const getStudentClassrooms = async (studentId) => {
     const session = driver.session();
     try {
         const result = await session.run(
-            `MATCH (s:User {id: $studentId})-[:ENROLLED_IN]->(c:Classroom)
+            `MATCH (s:User {id_user: $studentId})-[:ENROLLED_IN]->(c:Classroom)
              RETURN collect(c) as classrooms`,
             { studentId }
         );
@@ -126,7 +125,7 @@ const getProfessorClassrooms = async (professorId) => {
     const session = driver.session();
     try {
         const result = await session.run(
-            `MATCH (p:User {id: $professorId})-[:TEACHES]->(c:Classroom)
+            `MATCH (p:User {id_user: $professorId})-[:TEACHES]->(c:Classroom)
              RETURN collect(c) as classrooms`,
             { professorId }
         );

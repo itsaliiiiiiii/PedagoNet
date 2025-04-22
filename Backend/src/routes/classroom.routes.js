@@ -4,7 +4,7 @@ const { authenticateToken } = require('../middleware/auth.middleware');
 const { checkProfessorRole } = require('../middleware/role.middleware');
 const { 
     createClassroom,
-    getClassroomById,
+    getClassroomDetails,
     getAllClassrooms,
     updateClassroom,
     deleteClassroom,
@@ -16,7 +16,7 @@ const {
 // Create a new classroom (Professor only)
 router.post('/', authenticateToken, checkProfessorRole, async (req, res) => {
     try {
-        const result = await createClassroom(req.user._id, req.body);
+        const result = await createClassroom(req.user.id_user, req.body);
         res.status(result.success ? 201 : 400).json(result);
     } catch (error) {
         console.error('Classroom creation error:', error);
@@ -27,7 +27,7 @@ router.post('/', authenticateToken, checkProfessorRole, async (req, res) => {
 // Get a specific classroom
 router.get('/:id', authenticateToken, async (req, res) => {
     try {
-        const result = await getClassroomById(req.params.id, req.user._id);
+        const result = await getClassroomDetails(req.params.id, req.user._id);
         res.status(result.success ? 200 : 404).json(result);
     } catch (error) {
         console.error('Classroom retrieval error:', error);

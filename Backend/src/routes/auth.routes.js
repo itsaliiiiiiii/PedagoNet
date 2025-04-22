@@ -5,7 +5,7 @@ const { initiateRegistration, verifyAndCreateAccount, login } = require('../serv
 // Step 1: Check email & send verification code
 router.post('/register', async (req, res) => {
     try {
-        if (!req.body || !req.body.email ) {
+        if (!req.body?.email) {
             return res.status(400).json({ success: false, message: 'Missing required fields: email and code' });
         }
         const result = await initiateRegistration(req.body);
@@ -19,7 +19,7 @@ router.post('/register', async (req, res) => {
 // Step 2: Verify code & create account
 router.post('/verify', async (req, res) => {
     try {
-        if (!req.body || !req.body.email || !req.body.code) {
+        if (!req.body?.email || !req.body?.code) {
             return res.status(400).json({ success: false, message: 'Missing required fields: email and code' });
         }
         const { email, code, ...userData } = req.body;
