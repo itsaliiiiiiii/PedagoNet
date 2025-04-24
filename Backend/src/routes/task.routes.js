@@ -12,7 +12,7 @@ const {
 // Create a new task (Professor only)
 router.post('/:classroomId', authenticateToken, checkProfessorRole, async (req, res) => {
     try {
-        const result = await createTask(req.user._id, req.params.classroomId, req.body);
+        const result = await createTask(req.user.id_user, req.params.classroomId, req.body);
         res.status(result.success ? 201 : 400).json(result);
     } catch (error) {
         console.error('Task creation error:', error);
@@ -23,7 +23,7 @@ router.post('/:classroomId', authenticateToken, checkProfessorRole, async (req, 
 // Get tasks for a classroom
 router.get('/:classroomId', authenticateToken, async (req, res) => {
     try {
-        const result = await getClassroomTasks(req.params.classroomId, req.user._id, req.user.role);
+        const result = await getClassroomTasks(req.params.classroomId, req.user.id_user, req.user.role);
         res.status(result.success ? 200 : 400).json(result);
     } catch (error) {
         console.error('Tasks retrieval error:', error);
@@ -34,7 +34,7 @@ router.get('/:classroomId', authenticateToken, async (req, res) => {
 // Submit task (Student only)
 router.post('/:taskId/submit', authenticateToken, async (req, res) => {
     try {
-        const result = await submitTask(req.params.taskId, req.user._id, req.body);
+        const result = await submitTask(req.params.taskId, req.user.id_user, req.body);
         res.status(result.success ? 200 : 400).json(result);
     } catch (error) {
         console.error('Task submission error:', error);
@@ -48,7 +48,7 @@ router.post('/:taskId/grade/:studentId', authenticateToken, checkProfessorRole, 
         const result = await gradeSubmission(
             req.params.taskId,
             req.params.studentId,
-            req.user._id,
+            req.user.id_user,
             req.body.grade,
             req.body.feedback
         );

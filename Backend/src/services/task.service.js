@@ -9,10 +9,11 @@ const driver = neo4j.driver(
 const createTask = async (professorId, classroomId, taskData) => {
     const session = driver.session();
     try {
+        // First verify professor owns the classroom
         const result = await session.run(
-            `MATCH (p:User {id: $professorId}), (c:Classroom {id: $classroomId})
+            `MATCH (p:User {id_user: $professorId})-[:TEACHES]->(c:Classroom {id_classroom: $classroomId})
              CREATE (t:Task {
-                id: randomUUID(),
+                id_task: randomUUID(),
                 title: $title,
                 description: $description,
                 deadline: datetime($deadline),
@@ -21,7 +22,6 @@ const createTask = async (professorId, classroomId, taskData) => {
                 updatedAt: datetime()
              })
              CREATE (c)-[:HAS_TASK]->(t)
-             CREATE (p)-[:CREATED]->(t)
              RETURN t`,
             {
                 professorId,
@@ -58,12 +58,12 @@ const getClassroomTasks = async (classroomId, userId, role) => {
         let params = { classroomId };
 
         if (role === 'professor') {
-            query = `MATCH (c:Classroom {id: $classroomId})-[:HAS_TASK]->(t:Task)
+            query = `MATCH (c:Classroom {id_classroom: $classroomId})-[:HAS_TASK]->(t:Task)
                      OPTIONAL MATCH (t)<-[:SUBMITTED]-(s:Submission)
                      RETURN t, count(s) as submissionCount`;
         } else {
-            query = `MATCH (c:Classroom {id: $classroomId})-[:HAS_TASK]->(t:Task)
-                     OPTIONAL MATCH (t)<-[:SUBMITTED]-(s:Submission {studentId: $userId})
+            query = `MATCH (c:Classroom {id_classroom: $classroomId})-[:HAS_TASK]->(t:Task)
+                     OPTIONAL MATCH (t)<-[:SUBMITTED]-(s:Submission {student_id: $userId})
                      RETURN t, s`;
             params.userId = userId;
         }
@@ -102,13 +102,13 @@ const submitTask = async (taskId, studentId, submissionData) => {
     const session = driver.session();
     try {
         const result = await session.run(
-            `MATCH (t:Task {id: $taskId}), (s:User {id: $studentId})
+            `MATCH (t:Task {id_task: $taskId}), (s:User {id_user: $studentId})
              CREATE (sub:Submission {
-                id: randomUUID(),
+                id_submission: randomUUID(),
                 content: $content,
                 submittedAt: datetime(),
                 status: 'submitted',
-                studentId: $studentId
+                student_id: $studentId
              })
              CREATE (s)-[:SUBMITTED]->(sub)
              CREATE (sub)-[:FOR_TASK]->(t)
@@ -142,12 +142,12 @@ const gradeSubmission = async (taskId, studentId, professorId, grade, feedback) 
     const session = driver.session();
     try {
         const result = await session.run(
-            `MATCH (t:Task {id: $taskId})<-[:FOR_TASK]-(sub:Submission {studentId: $studentId})
+            `MATCH (t:Task {id_task: $taskId})<-[:FOR_TASK]-(sub:Submission {student_id: $studentId})
              SET sub.grade = $grade,
                  sub.feedback = $feedback,
                  sub.gradedAt = datetime(),
                  sub.status = 'graded',
-                 sub.gradedBy = $professorId
+                 sub.graded_by = $professorId
              RETURN sub`,
             {
                 taskId,
