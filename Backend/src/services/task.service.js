@@ -155,6 +155,7 @@ const submitTask = async (taskId, studentId, submissionData) => {
              CREATE (sub:Submission {
                 id_submission: randomUUID(),
                 content: $content,
+                filePath: $filePath,
                 submittedAt: datetime(),
                 status: 'submitted',
                 student_id: $studentId
@@ -165,7 +166,8 @@ const submitTask = async (taskId, studentId, submissionData) => {
             {
                 taskId,
                 studentId,
-                content: submissionData.content
+                content: submissionData.content,
+                filePath: submissionData.filePath
             }
         );
 
@@ -225,10 +227,58 @@ const gradeSubmission = async (taskId, studentId, professorId, grade, feedback) 
     }
 };
 
+const getTaskSubmissions = async (taskId, professorId) => {
+    const session = driver.session();
+    try {
+        const query = `
+            MATCH (p:User {id_user: $professorId})-[:TEACHES]->(c:Classroom)-[:HAS_TASK]->(t:Task {id_task: $taskId})
+            OPTIONAL MATCH (t)<-[:FOR_TASK]-(sub:Submission)<-[:SUBMITTED]-(s:User)
+            WITH t, collect({
+                submission: sub,
+                student: CASE 
+                    WHEN s IS NOT NULL 
+                    THEN {id_user: s.id_user, firstName: s.firstName, lastName: s.lastName}
+                    ELSE NULL 
+                END
+            }) as submissions
+            RETURN {
+                task: properties(t),
+                submissions: [x IN submissions WHERE x.submission IS NOT NULL]
+            } as result`;
+
+        const result = await session.run(query, { taskId, professorId });
+        
+        if (result.records.length === 0) {
+            return {
+                success: false,
+                message: 'Task not found or unauthorized access'
+            };
+        }
+
+        const data = result.records[0].get('result');
+        return {
+            success: true,
+            data: {
+                task: data.task,
+                submissions: data.submissions.map(sub => ({
+                    ...sub.submission.properties,
+                    student: sub.student
+                }))
+            }
+        };
+    } catch (error) {
+        console.error('Task submissions retrieval error:', error);
+        return { success: false, message: 'Internal server error' };
+    } finally {
+        await session.close();
+    }
+};
+
 module.exports = {
     createTask,
     getClassroomTasks,
     submitTask,
     gradeSubmission,
-    getStudentTasks  // Add the new function to exports
+    getStudentTasks,
+    getTaskSubmissions
 };
