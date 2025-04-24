@@ -6,7 +6,8 @@ const {
     createTask,
     getClassroomTasks,
     submitTask,
-    gradeSubmission
+    gradeSubmission,
+    getStudentTasks
 } = require('../services/task.service');
 
 // Create a new task (Professor only)
@@ -55,6 +56,17 @@ router.post('/:taskId/grade/:studentId', authenticateToken, checkProfessorRole, 
         res.status(result.success ? 200 : 400).json(result);
     } catch (error) {
         console.error('Grading error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Get all tasks from enrolled classrooms (Student only)
+router.get('/student/tasks', authenticateToken, async (req, res) => {
+    try {
+        const result = await getStudentTasks(req.user.id_user);
+        res.status(result.success ? 200 : 400).json(result);
+    } catch (error) {
+        console.error('Student tasks retrieval error:', error);
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });

@@ -38,8 +38,8 @@ const createTask = async (professorId, classroomId, taskData) => {
         }
 
         const task = result.records[0].get('t').properties;
-        return { 
-            success: true, 
+        return {
+            success: true,
             message: 'Task created successfully',
             data: task
         };
@@ -55,21 +55,22 @@ const getClassroomTasks = async (classroomId, userId, role) => {
     const session = driver.session();
     try {
         let query;
-        let params = { classroomId };
+        let params = { classroomId, userId };
 
         if (role === 'professor') {
             query = `MATCH (c:Classroom {id_classroom: $classroomId})-[:HAS_TASK]->(t:Task)
                      OPTIONAL MATCH (t)<-[:SUBMITTED]-(s:Submission)
                      RETURN t, count(s) as submissionCount`;
         } else {
-            query = `MATCH (c:Classroom {id_classroom: $classroomId})-[:HAS_TASK]->(t:Task)
-                     OPTIONAL MATCH (t)<-[:SUBMITTED]-(s:Submission {student_id: $userId})
-                     RETURN t, s`;
-            params.userId = userId;
+            // For students, first verify they are enrolled
+            query = `MATCH (s:User {id_user: $userId})-[:ENROLLED_IN]->(c:Classroom {id_classroom: $classroomId})
+                     MATCH (c)-[:HAS_TASK]->(t:Task)
+                     OPTIONAL MATCH (t)<-[:SUBMITTED]-(sub:Submission {student_id: $userId})
+                     RETURN t, sub as s`;
         }
 
         const result = await session.run(query, params);
-        
+
         const tasks = result.records.map(record => {
             const task = record.get('t').properties;
             if (role === 'professor') {
@@ -86,12 +87,60 @@ const getClassroomTasks = async (classroomId, userId, role) => {
             }
         });
 
-        return { 
-            success: true, 
-            data: tasks 
+        return {
+            success: true,
+            data: tasks
         };
     } catch (error) {
         console.error('Tasks retrieval error:', error);
+        return { success: false, message: 'Internal server error' };
+    } finally {
+        await session.close();
+    }
+};
+
+// Add new function to get all tasks from enrolled classrooms
+const getStudentTasks = async (studentId) => {
+    const session = driver.session();
+    try {
+        const query = `
+            MATCH (s:User {id_user: $studentId})-[:ENROLLED_IN]->(c:Classroom)
+            MATCH (c)-[:HAS_TASK]->(t:Task)
+            OPTIONAL MATCH (t)<-[:SUBMITTED]-(sub:Submission {student_id: $studentId})
+            WITH c, t, sub,
+                 CASE 
+                     WHEN sub IS NULL THEN 'not_submitted'
+                     WHEN sub.status = 'submitted' THEN 'pending_review'
+                     ELSE sub.status
+                 END as submissionStatus
+            RETURN c, t, sub, submissionStatus
+            ORDER BY t.deadline`;
+
+        const result = await session.run(query, { studentId });
+
+        const tasks = result.records.map(record => {
+            const classroom = record.get('c').properties;
+            const task = record.get('t').properties;
+            const submission = record.get('sub') ? record.get('sub').properties : null;
+            const status = record.get('submissionStatus');
+
+            return {
+                ...task,
+                classroom: {
+                    id_classroom: classroom.id_classroom,
+                    name: classroom.name
+                },
+                submission,
+                status
+            };
+        });
+
+        return {
+            success: true,
+            data: tasks
+        };
+    } catch (error) {
+        console.error('Student tasks retrieval error:', error);
         return { success: false, message: 'Internal server error' };
     } finally {
         await session.close();
@@ -125,8 +174,8 @@ const submitTask = async (taskId, studentId, submissionData) => {
         }
 
         const submission = result.records[0].get('sub').properties;
-        return { 
-            success: true, 
+        return {
+            success: true,
             message: 'Task submitted successfully',
             data: submission
         };
@@ -163,8 +212,8 @@ const gradeSubmission = async (taskId, studentId, professorId, grade, feedback) 
         }
 
         const submission = result.records[0].get('sub').properties;
-        return { 
-            success: true, 
+        return {
+            success: true,
             message: 'Submission graded successfully',
             data: submission
         };
@@ -180,5 +229,6 @@ module.exports = {
     createTask,
     getClassroomTasks,
     submitTask,
-    gradeSubmission
+    gradeSubmission,
+    getStudentTasks  // Add the new function to exports
 };
