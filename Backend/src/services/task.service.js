@@ -6,72 +6,29 @@ const driver = neo4j.driver(
     neo4j.auth.basic(process.env.NEO4J_USERNAME, process.env.NEO4J_PASSWORD)
 );
 
+const taskRepository = require('../repositories/task.repository');
+
 const createTask = async (professorId, classroomId, taskData) => {
-    const session = driver.session();
     try {
-        // First verify professor owns the classroom
-        const result = await session.run(
-            `MATCH (p:User {id_user: $professorId})-[:TEACHES]->(c:Classroom {id_classroom: $classroomId})
-             CREATE (t:Task {
-                id_task: randomUUID(),
-                title: $title,
-                description: $description,
-                deadline: datetime($deadline),
-                maxScore: $maxScore,
-                createdAt: datetime(),
-                updatedAt: datetime()
-             })
-             CREATE (c)-[:HAS_TASK]->(t)
-             RETURN t`,
-            {
-                professorId,
-                classroomId,
-                title: taskData.title,
-                description: taskData.description,
-                deadline: taskData.deadline,
-                maxScore: taskData.maxScore
-            }
-        );
-
-        if (result.records.length === 0) {
-            return { success: false, message: 'Failed to create task' };
-        }
-
-        const task = result.records[0].get('t').properties;
-        return {
+        const task = await taskRepository.createTask(professorId, classroomId, taskData);
+        return task ? {
             success: true,
             message: 'Task created successfully',
             data: task
+        } : {
+            success: false,
+            message: 'Failed to create task'
         };
     } catch (error) {
         console.error('Task creation error:', error);
         return { success: false, message: 'Internal server error' };
-    } finally {
-        await session.close();
     }
 };
 
 const getClassroomTasks = async (classroomId, userId, role) => {
-    const session = driver.session();
     try {
-        let query;
-        let params = { classroomId, userId };
-
-        if (role === 'professor') {
-            query = `MATCH (c:Classroom {id_classroom: $classroomId})-[:HAS_TASK]->(t:Task)
-                     OPTIONAL MATCH (t)<-[:SUBMITTED]-(s:Submission)
-                     RETURN t, count(s) as submissionCount`;
-        } else {
-            // For students, first verify they are enrolled
-            query = `MATCH (s:User {id_user: $userId})-[:ENROLLED_IN]->(c:Classroom {id_classroom: $classroomId})
-                     MATCH (c)-[:HAS_TASK]->(t:Task)
-                     OPTIONAL MATCH (t)<-[:SUBMITTED]-(sub:Submission {student_id: $userId})
-                     RETURN t, sub as s`;
-        }
-
-        const result = await session.run(query, params);
-
-        const tasks = result.records.map(record => {
+        const records = await taskRepository.getClassroomTasks(classroomId, userId, role);
+        const tasks = records.map(record => {
             const task = record.get('t').properties;
             if (role === 'professor') {
                 return {
@@ -79,7 +36,7 @@ const getClassroomTasks = async (classroomId, userId, role) => {
                     submissionCount: record.get('submissionCount').toNumber()
                 };
             } else {
-                const submission = record.get('s') ? record.get('s').properties : null;
+                const submission = record.get('sub') ? record.get('sub').properties : null;
                 return {
                     ...task,
                     submission
@@ -94,8 +51,6 @@ const getClassroomTasks = async (classroomId, userId, role) => {
     } catch (error) {
         console.error('Tasks retrieval error:', error);
         return { success: false, message: 'Internal server error' };
-    } finally {
-        await session.close();
     }
 };
 
