@@ -23,7 +23,6 @@ import {
   Pin,
   Filter,
 } from "lucide-react"
-import Logo from "@/components/logo"
 import { useMediaQuery } from "@/hooks/use-mobile"
 import DesktopNav from "@/components/navs/desktopnav"
 import MobileNav from "@/components/navs/mobilenav"
