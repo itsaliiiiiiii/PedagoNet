@@ -51,21 +51,25 @@ class AuthRepository extends BaseRepository {
                 lastName: $lastName,
                 dateOfBirth: datetime($dateOfBirth),
                 role: $role,
+                ${userData.department ? 'department: $department,' : ''}
+                ${userData.major ? 'major: $major,' : ''}
                 isVerified: true,
                 createdAt: datetime(),
                 updatedAt: datetime()
             }) RETURN u`;
-
+    
         const params = {
             id_user,
-            email: userData.email.toLowerCase(),
+            email: userData.email,
             password: hashedPassword,
             firstName: userData.firstName,
             lastName: userData.lastName,
             dateOfBirth: userData.dateOfBirth,
-            role: userData.role
+            role: userData.role,
+            ...(userData.department && { department: userData.department }),
+            ...(userData.major && { major: userData.major })
         };
-
+    
         const records = await this.executeQuery(query, params);
         return records[0].get('u').properties;
     }

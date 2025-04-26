@@ -1,6 +1,8 @@
 const bcrypt = require('bcrypt');
 const { sendVerificationEmail } = require('./email.service');
 const { generateToken } = require('./jwt.service');
+const authRepository = require('../repositories/auth.repository');
+const SchoolUser = require('../models/schoolUser.model');
 require('dotenv').config();
 
 
@@ -10,7 +12,13 @@ const generateVerificationCode = () => {
 
 const initiateRegistration = async (userData) => {
     try {
-        // Check if user already exists
+        // Check if email exists in school database
+        const schoolUser = await SchoolUser.findOne({ email: userData.email });
+        if (!schoolUser) {
+            return { success: false, message: 'Email not found in school database' };
+        }
+
+        // Check if user already exists in our system
         const userExists = await authRepository.checkExistingUser(userData.email);
         if (userExists) {
             return { success: false, message: 'Email already registered in our system' };
@@ -33,9 +41,9 @@ const initiateRegistration = async (userData) => {
             message: 'Verification code sent successfully',
             userData: {
                 email: userData.email,
-                firstName: userData.firstName,
-                lastName: userData.lastName,
-                role: userData.role
+                firstName: schoolUser.firstName,
+                lastName: schoolUser.lastName,
+                role: schoolUser.role
             }
         };
     } catch (error) {
@@ -52,28 +60,41 @@ const verifyAndCreateAccount = async (email, code, userData) => {
             return { success: false, message: 'Invalid or expired verification code' };
         }
 
+        // Get user data from school database
+        const schoolUser = await SchoolUser.findOne({ email });
+        if (!schoolUser) {
+            return { success: false, message: 'User not found in school database' };
+        }
+
+        // Format dateOfBirth for Neo4j
+        const formattedDateOfBirth = new Date(schoolUser.dateOfBirth).toISOString();
+
         // Hash password
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(userData.password, salt);
 
-        // Create new user
+        // Create new user with data from school database
         const id_user = require('crypto').randomUUID();
-        const result = await authRepository.createUser(userData, hashedPassword, id_user);
+        const result = await authRepository.createUser({
+            ...schoolUser.toObject(),
+            dateOfBirth: formattedDateOfBirth,
+            password: hashedPassword
+        }, hashedPassword, id_user);
 
         const userNode = result.records[0].get('u');
         const user = {
             id_user: userNode.properties.id_user,
             email: userNode.properties.email,
-            role: userNode.properties.role
+            role: userNode.properties.role,
+            password: hashedPassword
         };
-        console.log(user);
 
         // Verify password
-        if (!password) {
+        if (!userData.password) {
             return { success: false, message: 'Password is required' };
         }
 
-        const isValidPassword = await bcrypt.compare(password, user.password);
+        const isValidPassword = await bcrypt.compare(userData.password, user.password);
         if (!isValidPassword) {
             return { success: false, message: 'Incorrect password' };
         }
@@ -91,11 +112,8 @@ const verifyAndCreateAccount = async (email, code, userData) => {
             token: token
         };
     } catch (error) {
-        console.error('Account creation error details:', error);
-        return {
-            success: false,
-            message: 'Failed to create account: ' + error.message
-        };
+        console.error('Account creation error:', error);
+        return { success: false, message: error.message };
     }
 };
 

@@ -1,5 +1,7 @@
 const { connectDatabase, neo4jDriver } = require('../config/database');
+const { connectMongoDB, mongoose } = require('../config/mongodb'); // Add this
 const bcrypt = require('bcrypt');
+const SchoolUser = require('../models/schoolUser.model'); // Add this
 
 // Sample data
 // Test credentials - all accounts use password: test123
@@ -58,14 +60,32 @@ const users = [
 
 const seedDatabase = async () => {
     try {
-        // Connect to Neo4j
+        // Connect to databases
         await connectDatabase();
+        await connectMongoDB(); // Add this
         const session = neo4jDriver.session();
         
         console.log('🗑️ Clearing existing data...');
         await session.run('MATCH (n) DETACH DELETE n');
-        
-        console.log('👥 Creating users...');
+        await SchoolUser.deleteMany({}); // Clear MongoDB collection
+
+        console.log('👥 Creating school users in MongoDB...');
+        // Create school users in MongoDB first
+        const schoolUsers = await Promise.all(users.map(async user => {
+            const schoolUser = new SchoolUser({
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                role: user.role,
+                department: user.department,
+                major: user.major,
+                dateOfBirth: user.dateOfBirth
+            });
+            return schoolUser.save();
+        }));
+        console.log(`✅ Created ${schoolUsers.length} school users in MongoDB`);
+
+        console.log('👥 Creating users in Neo4j...');
         for (const user of users) {
             const salt = await bcrypt.genSalt(10);
             const hashedPassword = await bcrypt.hash(user.password, salt);
@@ -191,6 +211,7 @@ const seedDatabase = async () => {
         
         await session.close();
         await neo4jDriver.close();
+        await mongoose.connection.close(); // Close MongoDB connection
         
         process.exit(0);
     } catch (error) {
