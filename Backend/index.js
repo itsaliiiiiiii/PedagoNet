@@ -1,5 +1,6 @@
 const express = require('express');
 const { connectDatabase } = require('./src/config/database');
+const { connectMongoDB } = require('./src/config/mongodb'); // Add this line
 const authRoutes = require('./src/routes/auth.routes');
 const classroomRoutes = require('./src/routes/classroom.routes');
 const connectionRoutes = require('./src/routes/connection.routes');
@@ -16,6 +17,7 @@ app.use(express.json());
 
 // Connect to database
 connectDatabase();
+connectMongoDB(); // Add this line
 
 // CORS middleware
 app.use((req, res, next) => {

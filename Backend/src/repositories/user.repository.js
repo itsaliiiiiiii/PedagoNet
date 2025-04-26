@@ -65,7 +65,7 @@ class UserRepository extends BaseRepository {
             SET ${updates.join(', ')}
             RETURN u
         `;
-
+        
         const records = await this.executeQuery(query, params);
         return records[0].get('u').properties;
     }
