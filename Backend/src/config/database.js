@@ -3,7 +3,8 @@ require('dotenv').config();
 
 const neo4jDriver = neo4j.driver(
     process.env.NEO4J_URI,
-    neo4j.auth.basic(process.env.NEO4J_USERNAME, process.env.NEO4J_PASSWORD)
+    neo4j.auth.basic(process.env.NEO4J_USERNAME, process.env.NEO4J_PASSWORD),
+    { encrypted: false }
 );
 
 const connectDatabase = async () => {
