@@ -20,7 +20,6 @@ export default function LoginForm() {
     setError("")
     setIsLoading(true)
 
-    // Basic validation
     if (!email || !password) {
       setError("Please fill in all fields")
       setIsLoading(false)
@@ -28,18 +27,25 @@ export default function LoginForm() {
     }
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      router.push("/dashboard")
-    } catch (err) {
-      setError("Failed to login. Please check your credentials.")
+      const response = await fetch("http://localhost:8080/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      })
+
+      if (!response.ok) {
+        const { message } = await response.json()
+        throw new Error(message || "Failed to login")
+      }
+
+      router.push("/home")
+    } catch (err: any) {
+      setError(err.message || "Failed to login. Please check your credentials.")
     } finally {
       setIsLoading(false)
     }
-  }
-
-  const handleMicrosoftLogin = () => {
-    // In a real implementation, this would redirect to Microsoft OAuth
-    alert("This would connect to Microsoft authentication in a real implementation")
   }
 
   return (
