@@ -1,7 +1,7 @@
 import Link from "next/link"
-import Image from 'next/image';
-import OtpForm from "@/components/auth/OTPFrom";
-export default function LoginPage() {
+import Image from "next/image"
+import RegisterForm from "@/components/auth/registerForm"
+export default function RegisterPage() {
   return (
     <div className="relative min-h-screen w-full">
       {/* Two-column layout */}
@@ -12,22 +12,22 @@ export default function LoginPage() {
             <div className="text-center md:text-left">
               <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">School Connect</h1>
               <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                Sign in to your account to connect with your school community
+                Create your account to join your school community
               </p>
             </div>
 
             <div className="card-animation">
-              <OtpForm />
+              <RegisterForm />
             </div>
 
             <div className="text-center md:text-left text-sm">
               <p className="text-gray-600 dark:text-gray-300">
-                You already have an account?{" "}
+                Already have an account?{" "}
                 <Link
                   href="/login"
                   className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
                 >
-                  Login
+                  Log in
                 </Link>
               </p>
             </div>
@@ -38,20 +38,23 @@ export default function LoginPage() {
         <div className="hidden md:flex w-1/2 bg-blue-50 dark:bg-gray-800 items-center justify-center p-8">
           <div className="flex flex-col items-center">
             <div className="relative">
-              <div className="flex h-64 w-64 items-center justify-center rounded-full dark:bg-white-100 bg-slate-200 shadow-inner dark:bg-gray-700">
-              <Image
-              src="/logo.png"    
-              alt="My Logo"
-              width={210}
-              height={210}
-              className="rounded-full" />           
+              {/* Large school icon */}
+              <div className="flex h-64 w-64 items-center justify-center rounded-full bg-blue-100 shadow-inner dark:bg-gray-700">
+                <Image
+                  src="/logo.png"
+                  alt="My Logo"
+                  width={210}
+                  height={210}
+                  className="rounded-full z-10" />
               </div>
+              {/* Decorative circles */}
               <div className="absolute -top-1 -left-3 h-12 w-12 rounded-full bg-blue-200 opacity-40"></div>
               <div className="absolute -bottom-4 -right-7 h-16 w-16 rounded-full bg-red-500 opacity-20"></div>
             </div>
-            <h2 className="mt-8 text-2xl font-bold text-gray-900 dark:text-white">Welcome Back!</h2>
+
+            <h2 className="mt-8 text-2xl font-bold text-gray-900 dark:text-white">Join Our Community</h2>
             <p className="mt-4 max-w-md text-center text-gray-600 dark:text-gray-300">
-              Connect with classmates, access your courses, and stay updated with school events.
+              Create an account to connect with your school, access resources, and collaborate with peers.
             </p>
           </div>
         </div>
