@@ -52,6 +52,65 @@ const initiateRegistration = async (userData) => {
     }
 };
 
+const verifyEmail = async (email, code) => {
+    try {
+        // Find and validate verification code
+        const verificationCode = await authRepository.findVerificationCode(email, code);
+        if (!verificationCode) {
+            return { success: false, message: 'Invalid or expired verification code' };
+        }
+
+        return {
+            success: true,
+            message: 'Email verified successfully'
+        };
+    } catch (error) {
+        console.error('Email verification error:', error);
+        return { success: false, message: error.message };
+    }
+};
+
+const createAccount = async (email, password) => {
+    try {
+        // Get user data from school database
+        const schoolUser = await SchoolUser.findOne({ email });
+        if (!schoolUser) {
+            return { success: false, message: 'User not found in school database' };
+        }
+
+        // Format dateOfBirth for Neo4j
+        const formattedDateOfBirth = new Date(schoolUser.dateOfBirth).toISOString();
+
+        // Hash password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        // Create new user with data from school database
+        const id_user = require('crypto').randomUUID();
+        await authRepository.createUser({
+            ...schoolUser.toObject(),
+            dateOfBirth: formattedDateOfBirth,
+            password: hashedPassword
+        }, hashedPassword, id_user);
+
+        // Generate JWT token
+        const token = generateToken({
+            id_user: id_user,
+            email: email,
+            role: schoolUser.role
+        });
+
+        return {
+            success: true,
+            message: 'Account created successfully',
+            token: token
+        };
+    } catch (error) {
+        console.error('Account creation error:', error);
+        return { success: false, message: error.message };
+    }
+};
+
 const verifyAndCreateAccount = async (email, code, userData) => {
     try {
         // Find and validate verification code
@@ -156,6 +215,7 @@ const login = async (email, password) => {
 
 module.exports = {
     initiateRegistration,
-    verifyAndCreateAccount,
+    verifyEmail,
+    createAccount,
     login
 };
