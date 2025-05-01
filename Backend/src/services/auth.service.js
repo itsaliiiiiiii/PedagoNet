@@ -154,8 +154,37 @@ const login = async (email, password) => {
     }
 };
 
+const resendVerificationCode = async (email) => {
+    try {
+      // Check if user exists in SchoolUser (MongoDB)
+      const user = await SchoolUser.findOne({ email: email });
+      if (!user) {
+        return { success: false, message: 'User not found' };
+      }
+  
+      // Generate a new code
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+  
+      // Store the new code (implement this in your repository if needed)
+      await authRepository.createVerificationCode(email, code);
+  
+      // Send the code by email
+      const emailSent = await sendVerificationEmail(email, code);
+      if (!emailSent) {
+        return { success: false, message: 'Failed to send verification email' };
+      }
+  
+      return { success: true, message: 'Verification code resent successfully' };
+    } catch (error) {
+      console.error('Resend verification code error:', error);
+      return { success: false, message: 'Internal server error' };
+    }
+  };
+  
+
 module.exports = {
     initiateRegistration,
     verifyAndCreateAccount,
-    login
+    login,
+    resendVerificationCode
 };

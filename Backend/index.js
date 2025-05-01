@@ -1,12 +1,13 @@
 const express = require('express');
 const { connectDatabase } = require('./src/config/database');
 const { connectMongoDB } = require('./src/config/mongodb'); // Add this line
-const authRoutes = require('./src/routes/auth.routes');
 const classroomRoutes = require('./src/routes/classroom.routes');
 const connectionRoutes = require('./src/routes/connection.routes');
 const postRoutes = require('./src/routes/post.routes');
 const messageRoutes = require('./src/routes/message.routes');
 const taskRoutes = require('./src/routes/task.routes');
+const userRoutes = require('./src/routes/users.routes');
+const authRoutes = require('./src/routes/auth.routes');
 require('dotenv').config();
 
 const app = express();
@@ -37,6 +38,8 @@ app.use('/connections', connectionRoutes);
 app.use('/posts', postRoutes);
 app.use('/messages', messageRoutes);
 app.use('/tasks', taskRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/auth', authRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

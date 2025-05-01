@@ -5,7 +5,7 @@ import 'package:social_media_app/screens/ProfilePage.dart';
 import 'package:social_media_app/widgets/homePage/Post/Post.dart';
 
 class HomePage extends StatelessWidget {
-  final List<Map<String, dynamic>> posts = [
+  static const List<Map<String, dynamic>> posts = [
     {
       'name': 'Badr Badr',
       'role': 'Étudiant GI2',
@@ -75,6 +75,8 @@ class HomePage extends StatelessWidget {
       'isLiked': false,
     },
   ];
+
+  const HomePage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -581,7 +583,8 @@ class HomePage extends StatelessWidget {
                   TextButton(
                     onPressed: () {
                       Navigator.of(context).pop();
-                      // Perform logout action
+                      // Navigate to login page
+                      Navigator.pushReplacementNamed(context, '/login');
                     },
                     child: const Text('Déconnecter'),
                   ),
