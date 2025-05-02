@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth.middleware');
-const { createPost, getPosts, getPostById, updatePost, deletePost } = require('../services/post.service');
+const { createPost, getPosts, getPostById, updatePost, deletePost, markPostAsSeen, getSeenPosts } = require('../services/post.service');
 const { getConnections } = require('../services/neo4j.service');
 
 
@@ -154,5 +154,43 @@ async function isConnected(userId1, userId2) {
     const connections = await getConnections(userId1);
     return connections.some(conn => conn.userId === userId2 && conn.status === 'accepted');
 }
+
+// Mark a post as seen
+router.post('/:id/seen', authenticateToken, async (req, res) => {
+    try {
+        const result = await markPostAsSeen(req.user.id_user, req.params.id);
+        
+        if (!result.success) {
+            return res.status(500).json(result);
+        }
+
+        res.json({
+            success: true,
+            message: 'Post marked as seen'
+        });
+    } catch (error) {
+        console.error('Mark post as seen error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Get all seen posts
+router.get('/seen', authenticateToken, async (req, res) => {
+    try {
+        const result = await getSeenPosts(req.user.id_user);
+        
+        if (!result.success) {
+            return res.status(500).json(result);
+        }
+
+        res.json({
+            success: true,
+            seenPosts: result.seenPosts
+        });
+    } catch (error) {
+        console.error('Get seen posts error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
 
 module.exports = router;

@@ -6,6 +6,52 @@ const driver = neo4j.driver(
     neo4j.auth.basic(process.env.NEO4J_USERNAME, process.env.NEO4J_PASSWORD)
 );
 
+// Mark a post as seen by a user
+const markPostAsSeen = async (userId, postId) => {
+    const session = driver.session();
+    try {
+        const result = await session.run(
+            `MATCH (user:User {id_user: $userId}), (post:Post {id: $postId})
+             WHERE NOT (user)-[:SEEN]->(post)
+             CREATE (user)-[r:SEEN {timestamp: datetime()}]->(post)
+             RETURN r`,
+            { userId, postId }
+        );
+        return { success: true };
+    } catch (error) {
+        console.error('Mark post as seen error:', error);
+        return { success: false, message: 'Failed to mark post as seen' };
+    } finally {
+        await session.close();
+    }
+};
+
+// Get all posts seen by a user
+const getSeenPosts = async (userId) => {
+    const session = driver.session();
+    try {
+        const result = await session.run(
+            `MATCH (user:User {id_user: $userId})-[r:SEEN]->(post:Post)
+             RETURN post.id as postId, r.timestamp as seenAt
+             ORDER BY r.timestamp DESC`,
+            { userId }
+        );
+        
+        return {
+            success: true,
+            seenPosts: result.records.map(record => ({
+                postId: record.get('postId'),
+                seenAt: record.get('seenAt').toString()
+            }))
+        };
+    } catch (error) {
+        console.error('Get seen posts error:', error);
+        return { success: false, message: 'Failed to get seen posts' };
+    } finally {
+        await session.close();
+    }
+};
+
 // Create a new post
 const createPost = async (authorId, content, visibility = 'public', attachments = []) => {
     const session = driver.session();
@@ -201,5 +247,7 @@ module.exports = {
     getPosts,
     getPostById,
     updatePost,
-    deletePost
+    deletePost,
+    markPostAsSeen,
+    getSeenPosts
 };
