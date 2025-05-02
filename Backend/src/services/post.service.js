@@ -98,14 +98,18 @@ const getPosts = async (userId, connectedUserIds, limit = 10, skip = 0) => {
     const session = driver.session();
     try {
         const result = await session.run(
-            `MATCH (author:User)-[:AUTHORED]->(p:Post) , (author:User)-[:CONNECTION]->(author2:User)
+            `MATCH (author:User)-[:AUTHORED]->(p:Post), (author:User)-[:CONNECTION]->(author2:User)
              WHERE author2.id_user IN $userIds
              AND (p.visibility = 'public' OR p.visibility = 'connections')
+             AND NOT EXISTS {
+                 MATCH (viewer:User {id_user: $userId})-[:SEEN]->(p)
+             }
              RETURN p, author
              ORDER BY p.createdAt DESC
              SKIP $skip
              LIMIT $limit`,
             { 
+                userId,
                 userIds: [userId, ...connectedUserIds],
                 skip: neo4j.int(skip),
                 limit: neo4j.int(limit)
