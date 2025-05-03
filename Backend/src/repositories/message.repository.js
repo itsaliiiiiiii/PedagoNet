@@ -1,62 +1,66 @@
-const BaseRepository = require('./base.repository');
+const Message = require('../models/message.model');
 
-class MessageRepository extends BaseRepository {
+class MessageRepository {
     async createMessage(senderId, receiverId, content) {
-        const query = `
-            MATCH (sender:User {id: $senderId}), (receiver:User {id: $receiverId})
-            CREATE (m:Message {
-                id: randomUUID(),
-                content: $content,
+        try {
+            const message = new Message({
+                senderId,
+                receiverId,
+                content,
                 status: 'sent',
-                createdAt: datetime()
-            })
-            CREATE (sender)-[:SENT]->(m)
-            CREATE (m)-[:RECEIVED_BY]->(receiver)
-            RETURN m, sender, receiver`;
-
-        const records = await this.executeQuery(query, { senderId, receiverId, content });
-        return records.length > 0 ? {
-            message: records[0].get('m').properties,
-            sender: records[0].get('sender').properties,
-            receiver: records[0].get('receiver').properties
-        } : null;
+                createdAt: new Date()
+            });
+            await message.save();
+            return message;
+        } catch (error) {
+            console.error('Error creating message:', error);
+            return null;
+        }
     }
 
     async getConversation(userId1, userId2, limit = 50, skip = 0) {
-        const query = `
-            MATCH (u1:User {id: $userId1}), (u2:User {id: $userId2})
-            MATCH (sender)-[:SENT]->(m:Message)-[:RECEIVED_BY]->(receiver)
-            WHERE (sender = u1 AND receiver = u2) OR (sender = u2 AND receiver = u1)
-            RETURN m, sender, receiver
-            ORDER BY m.createdAt DESC
-            SKIP $skip
-            LIMIT $limit`;
-
-        const records = await this.executeQuery(query, { userId1, userId2, skip, limit });
-        return records.map(record => ({
-            message: record.get('m').properties,
-            sender: record.get('sender').properties,
-            receiver: record.get('receiver').properties
-        }));
+        try {
+            const messages = await Message.find({
+                $or: [
+                    { senderId: userId1, receiverId: userId2 },
+                    { senderId: userId2, receiverId: userId1 }
+                ]
+            })
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit);
+            return messages;
+        } catch (error) {
+            console.error('Error getting conversation:', error);
+            return [];
+        }
     }
 
     async markMessageAsRead(messageId, userId) {
-        const query = `
-            MATCH (m:Message {id: $messageId})-[:RECEIVED_BY]->(u:User {id: $userId})
-            SET m.status = 'read', m.readAt = datetime()
-            RETURN m`;
-
-        const records = await this.executeQuery(query, { messageId, userId });
-        return records.length > 0 ? records[0].get('m').properties : null;
+        try {
+            const message = await Message.findOneAndUpdate(
+                { _id: messageId, receiverId: userId, status: 'sent' },
+                { status: 'read', readAt: new Date() },
+                { new: true }
+            );
+            return message;
+        } catch (error) {
+            console.error('Error marking message as read:', error);
+            return null;
+        }
     }
 
     async getUnreadCount(userId) {
-        const query = `
-            MATCH (m:Message {status: 'sent'})-[:RECEIVED_BY]->(u:User {id: $userId})
-            RETURN count(m) as unreadCount`;
-
-        const records = await this.executeQuery(query, { userId });
-        return records[0].get('unreadCount').toNumber();
+        try {
+            const count = await Message.countDocuments({
+                receiverId: userId,
+                status: 'sent'
+            });
+            return count;
+        } catch (error) {
+            console.error('Error getting unread count:', error);
+            return 0;
+        }
     }
 }
 
