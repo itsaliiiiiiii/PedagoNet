@@ -14,28 +14,31 @@ export default function RegisterForm() {
     e.preventDefault();
     setError("");
     setIsLoading(true);
-
+  
     try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Simulate email not found error
-      if (email !== "valid@school.edu") {
-        throw new Error("Email not found");
+      const res = await fetch("http://localhost:8080/auth/register", { // adjust if needed
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
+  
+      const data = await res.json();
+  
+      if (!res.ok || !data.success) {
+        throw new Error(data.message);
       }
 
-      // Redirect to login page after successful registration
-      router.push("/login?registered=true");
+      localStorage.setItem("pendingEmail", email);
+      router.push("/register/verify");
     } catch (err: any) {
-      if (err.message === "Email not found") {
-        setError("The email address you entered is not associated with a school account.");
-      } else {
-        setError("Failed to register. Please try again.");
-      }
+      setError(err.message || "Failed to register. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
+  
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-md dark:border-gray-800 dark:bg-gray-900">

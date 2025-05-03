@@ -77,25 +77,46 @@ export default function OTPForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
-
-    // Check if all OTP fields are filled
+  
     if (otp.some((digit) => !digit)) {
       setError("Please enter the complete verification code")
       return
     }
-
+  
+    const code = otp.join("")
+    const email = typeof window !== "undefined" ? localStorage.getItem("pendingEmail") : ""
+  
+    if (!email) {
+      setError("Email not found. Please restart the registration process.")
+      return
+    }
+  
     setIsVerifying(true)
-
+  
     try {
-      // Simulate verification process
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-      router.push("/dashboard")
-    } catch (err) {
-      setError("Invalid verification code. Please try again.")
+      const response = await fetch("http://localhost:8080/auth/verify-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ email, code })
+      })
+  
+      const data = await response.json()
+  
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Verification failed")
+      }
+
+      localStorage.setItem("otp", code);
+      router.push("/register/password")
+    } catch (err: any) {
+      setError(err.message || "Something went wrong")
     } finally {
       setIsVerifying(false)
     }
   }
+  
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-md dark:border-gray-800 dark:bg-gray-900">

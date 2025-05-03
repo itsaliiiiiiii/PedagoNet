@@ -1,11 +1,10 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { AlertCircle } from "lucide-react"
 import Link from "next/link"
+import type React from "react"
+import { useState, useEffect } from "react"
+import { AlertCircle, Check } from "lucide-react"
+import { useRouter, useSearchParams } from "next/navigation"
 
 export default function LoginForm() {
   const router = useRouter()
@@ -14,17 +13,19 @@ export default function LoginForm() {
   const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const searchParams = useSearchParams()
+  const [successMessage, setSuccessMessage] = useState("")
+
+  useEffect(() => {
+    if (searchParams.get("registered") === "true") {
+      setSuccessMessage("Account created successfully.")
+    }
+  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setIsLoading(true)
-
-    if (!email || !password) {
-      setError("Please fill in all fields")
-      setIsLoading(false)
-      return
-    }
 
     try {
       const response = await fetch("http://localhost:8080/auth/login", {
@@ -56,6 +57,14 @@ export default function LoginForm() {
             <div className="flex items-center gap-2">
               <AlertCircle className="h-4 w-4" />
               <p>{error}</p>
+            </div>
+          </div>
+        )}
+        {successMessage && (
+          <div className="rounded-md bg-green-50 p-3 text-sm text-green-700 dark:bg-green-900/30 dark:text-green-300">
+            <div className="flex items-center gap-2">
+              <Check className="h-4 w-4" />
+              <p>{successMessage}</p>
             </div>
           </div>
         )}

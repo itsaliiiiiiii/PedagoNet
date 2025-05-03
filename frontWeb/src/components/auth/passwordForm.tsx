@@ -8,8 +8,6 @@ import { AlertCircle, Check, X } from "lucide-react"
 
 export default function PasswordForm() {
   const router = useRouter()
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState("")
@@ -64,35 +62,57 @@ export default function PasswordForm() {
     e.preventDefault()
     setError("")
     setIsLoading(true)
-
-    // Basic validation
-    if (!name || !email || !password || !confirmPassword) {
+    const email = localStorage.getItem("pendingEmail")
+    const code = localStorage.getItem("otp")
+    if (!email) {
+      setError("No email found in local storage")
+      setIsLoading(false)
+      return
+    }
+  
+    if (!password || !confirmPassword) {
       setError("Please fill in all fields")
       setIsLoading(false)
       return
     }
-
+  
     if (password !== confirmPassword) {
       setError("Passwords do not match")
       setIsLoading(false)
       return
     }
-
+  
     try {
-      // Here you would typically call your registration API
-      // For now, we'll just simulate a successful registration
+      const response = await fetch("http://localhost:8080/auth/create-account", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          code,
+          password,
 
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // For demonstration, redirect to login page
+        }),
+      })
+  
+      const data = await response.json()
+  
+      if (!response.ok) {
+        setError(data.message || "Failed to create account")
+        return
+      }
+  
+      // Success → Rediriger
       router.push("/login?registered=true")
     } catch (err) {
-      setError("Failed to register. Please try again.")
+      console.error("Registration error:", err)
+      setError("An unexpected error occurred")
     } finally {
       setIsLoading(false)
     }
   }
+  
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-md dark:border-gray-800 dark:bg-gray-900">
