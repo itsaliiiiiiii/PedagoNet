@@ -24,7 +24,6 @@ class MyApp extends StatelessWidget {
           final args = ModalRoute.of(context)!.settings.arguments as Map<String, String>;
           return VerificationPage(
             email: args['email']!,
-            password: args['password']!,
           );
         },
         '/home': (context) => const HomePage(),

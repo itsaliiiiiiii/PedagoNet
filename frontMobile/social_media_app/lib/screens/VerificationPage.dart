@@ -1,172 +1,56 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:social_media_app/services/auth_service.dart';
+import 'package:social_media_app/screens/LoginPage.dart';
 
 class VerificationPage extends StatefulWidget {
   final String email;
-  final String password;
 
-  const VerificationPage({
-    Key? key,
-    required this.email,
-    required this.password,
-  }) : super(key: key);
+  const VerificationPage({Key? key, required this.email}) : super(key: key);
 
   @override
   _VerificationPageState createState() => _VerificationPageState();
 }
 
 class _VerificationPageState extends State<VerificationPage> {
-  final List<TextEditingController> _controllers = List.generate(
-    6,
-    (index) => TextEditingController(),
-  );
-  final List<FocusNode> _focusNodes = List.generate(
-    6,
-    (index) => FocusNode(),
-  );
+  final _formKey = GlobalKey<FormState>();
+  final _codeController = TextEditingController();
+  final _authService = AuthService();
   bool _isLoading = false;
+  String? _errorMessage;
 
-  @override
-  void dispose() {
-    for (var controller in _controllers) {
-      controller.dispose();
-    }
-    for (var node in _focusNodes) {
-      node.dispose();
-    }
-    super.dispose();
-  }
+  Future<void> _verifyEmail() async {
+    if (!_formKey.currentState!.validate()) return;
 
-  void _onChanged(int index, String value) {
-    if (value.length == 1 && index < 5) {
-      _focusNodes[index + 1].requestFocus();
-    }
-  }
-
-  void _onBackspace(int index) {
-    if (index > 0 && _controllers[index].text.isEmpty) {
-      _focusNodes[index - 1].requestFocus();
-    }
-  }
-
-  String _getVerificationCode() {
-    return _controllers.map((c) => c.text).join();
-  }
-
-  Future<void> _verifyCode() async {
     setState(() {
       _isLoading = true;
+      _errorMessage = null;
     });
 
     try {
-      final code = _getVerificationCode();
-      print('Verifying code for email: ${widget.email}');
-      print('Verification code entered: $code');
-
-      // First, check if the user exists
-      final checkUserResponse = await http.get(
-        Uri.parse('http://localhost:8080/api/users/schoolusers/${widget.email}'),
+      final success = await _authService.verifyEmail(
+        widget.email,
+        _codeController.text,
       );
 
-      print('Check user response status: ${checkUserResponse.statusCode}');
-      print('Check user response body: ${checkUserResponse.body}');
-
-      if (checkUserResponse.statusCode == 200) {
-        // User exists, proceed with verification
-        final response = await http.post(
-          Uri.parse('http://localhost:8080/api/auth/verify'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-                 'email': widget.email,
-                 'code': code, // <-- WRONG
-                 'password': widget.password,
-                }),
-        );
-
-        print('Verification response status: ${response.statusCode}');
-        print('Verification response body: ${response.body}');
-
-        if (response.statusCode == 200) {
-          if (!mounted) return;
-          print('Verification successful, navigating to home');
-          Navigator.pushReplacementNamed(context, '/home');
-        } else {
-          throw Exception('Invalid verification code: ${response.body}');
-        }
-      } else {
-        throw Exception('User not found. Please register first.');
-      }
-    } catch (e) {
-      print('Error during verification: $e');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      if (mounted) {
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Email verified successfully!')),
+        );
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+        );
+      } else {
         setState(() {
-          _isLoading = false;
+          _errorMessage = 'Invalid verification code';
         });
       }
-    }
-  }
-
-  Future<void> _resendCode() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      print('Resending code to: ${widget.email}');
-      
-      // First, check if the user exists
-      final checkUserResponse = await http.get(
-        Uri.parse('http://localhost:8080/api/users/schoolusers/${widget.email}'),
-      );
-
-      print('Check user response status: ${checkUserResponse.statusCode}');
-      print('Check user response body: ${checkUserResponse.body}');
-
-      if (checkUserResponse.statusCode == 200) {
-        // User exists, proceed with resending code
-        final response = await http.post(
-          Uri.parse('http://localhost:8080/api/auth/resend-code'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'email': widget.email,
-          }),
-        );
-
-        print('Resend code response status: ${response.statusCode}');
-        print('Resend code response body: ${response.body}');
-
-        if (response.statusCode == 200) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Verification code resent successfully'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        } else {
-          throw Exception('Failed to resend verification code: ${response.body}');
-        }
-      } else {
-        throw Exception('User not found. Please register first.');
-      }
     } catch (e) {
-      print('Error during resend: $e');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
-          backgroundColor: Colors.red,
-        ),
-      );
+      setState(() {
+        _errorMessage = e.toString();
+      });
     } finally {
       if (mounted) {
         setState(() {
@@ -180,60 +64,73 @@ class _VerificationPageState extends State<VerificationPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Verification'),
+        title: const Text('Verify Email'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Enter the verification code sent to ${widget.email}',
-              style: const TextStyle(fontSize: 16),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: List.generate(
-                6,
-                (index) => SizedBox(
-                  width: 40,
-                  child: TextField(
-                    controller: _controllers[index],
-                    focusNode: _focusNodes[index],
-                    textAlign: TextAlign.center,
-                    keyboardType: TextInputType.number,
-                    maxLength: 1,
-                    decoration: const InputDecoration(
-                      counterText: '',
-                      border: OutlineInputBorder(),
-                    ),
-                    onChanged: (value) => _onChanged(index, value),
-                    onSubmitted: (_) {
-                      if (index < 5) {
-                        _focusNodes[index + 1].requestFocus();
-                      }
-                    },
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'Enter Verification Code',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              ),
+                const SizedBox(height: 16),
+                Text(
+                  'We sent a verification code to ${widget.email}',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+                TextFormField(
+                  controller: _codeController,
+                  decoration: const InputDecoration(
+                    labelText: 'Verification Code',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter the verification code';
+                    }
+                    return null;
+                  },
+                ),
+                if (_errorMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Text(
+                      _errorMessage!,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _verifyEmail,
+                    child: _isLoading
+                        ? const CircularProgressIndicator()
+                        : const Text('Verify'),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _isLoading ? null : _verifyCode,
-              child: _isLoading
-                  ? const CircularProgressIndicator()
-                  : const Text('Verify'),
-            ),
-            const SizedBox(height: 20),
-            TextButton(
-              onPressed: _isLoading ? null : _resendCode,
-              child: const Text('Resend Code'),
-            ),
-          ],
+          ),
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _codeController.dispose();
+    super.dispose();
   }
 } 
