@@ -9,7 +9,7 @@ class UserRepository extends BaseRepository {
     }
 
     async findById(userId) {
-        const query = 'MATCH (u:User {id: $userId}) RETURN u';
+        const query = 'MATCH (u:User {id_user: $userId}) RETURN u';
         const records = await this.executeQuery(query, { userId });
         return records.length > 0 ? records[0].get('u').properties : null;
     }
@@ -20,7 +20,7 @@ class UserRepository extends BaseRepository {
 
         const query = `
             CREATE (u:User {
-                id: randomUUID(),
+                id_user: randomUUID(),
                 email: $email,
                 password: $password,
                 firstName: $firstName,
