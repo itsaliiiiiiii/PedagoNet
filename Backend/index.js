@@ -7,6 +7,7 @@ const connectionRoutes = require('./src/routes/connection.routes');
 const postRoutes = require('./src/routes/post.routes');
 const messageRoutes = require('./src/routes/message.routes');
 const taskRoutes = require('./src/routes/task.routes');
+const profileRoutes = require('./src/routes/profile.routes');
 const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
@@ -35,6 +36,7 @@ app.use((req, res, next) => {
 
 // Routes
 app.use('/auth', authRoutes);
+app.use('/profile', profileRoutes);
 app.use('/classrooms', classroomRoutes);
 app.use('/connections', connectionRoutes);
 app.use('/posts', postRoutes);

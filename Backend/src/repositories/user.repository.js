@@ -61,7 +61,7 @@ class UserRepository extends BaseRepository {
         updates.push('u.updatedAt = datetime()');
         
         const query = `
-            MATCH (u:User {id: $userId})
+            MATCH (u:User {id_user: $userId})
             SET ${updates.join(', ')}
             RETURN u
         `;
