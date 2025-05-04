@@ -7,6 +7,7 @@ const connectionRoutes = require('./src/routes/connection.routes');
 const postRoutes = require('./src/routes/post.routes');
 const messageRoutes = require('./src/routes/message.routes');
 const taskRoutes = require('./src/routes/task.routes');
+const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
 const app = express();
@@ -14,6 +15,7 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.json());
+app.use(cookieParser());
 
 // Connect to database
 connectDatabase();

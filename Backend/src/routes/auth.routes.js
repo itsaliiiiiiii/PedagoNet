@@ -53,11 +53,34 @@ router.post('/create-account', async (req, res) => {
 
 // Login with JWT
 router.post('/login', async (req, res) => {
-    // complete login
     try {
         const { email, password } = req.body;
+        const clientType = req.headers['x-client-type'] || 'web'; // Default to web if not specified
+        
         const result = await login(email, password);
-        res.status(result.success ? 200 : 401).json(result);
+        
+        if (!result.success) {
+            return res.status(401).json(result);
+        }
+
+        if (clientType === 'web') {
+            // Set JWT in HTTP-only cookie for web clients
+            res.cookie('token', result.token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production', // Only use secure in production
+                sameSite: 'strict',
+                maxAge: 24 * 60 * 60 * 1000 // 24 hours (match JWT_EXPIRES_IN)
+            });
+
+            return res.status(200).json({
+                success: true,
+                message: 'Login successful',
+                user: result.user
+            });
+        } else {
+            // Send token in response body for mobile clients
+            return res.status(200).json(result);
+        }
     } catch (error) {
         console.error('Login error:', error);
         res.status(500).json({ success: false, message: 'Internal server error' });
