@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { initiateRegistration, verifyEmail, login, createAccount } = require('../services/auth.service');
+const { verifyToken } = require('../services/jwt.service');
 
 // Step 1: Submit email & send verification code
 router.post('/register', async (req, res) => {
@@ -83,6 +84,51 @@ router.post('/login', async (req, res) => {
         }
     } catch (error) {
         console.error('Login error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Verify token endpoint
+router.post('/verify-token', async (req, res) => {
+    try {
+        const clientType = req.headers['x-client-type'] || 'web';
+        let token;
+
+        if (clientType === 'web') {
+            // Get token from cookie for web clients
+            token = req.cookies.token;
+        } else {
+            // Get token from body for mobile clients
+            token = req.body.token;
+        }
+
+        if (!token) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'No token provided' 
+            });
+        }
+
+        const decoded = verifyToken(token);
+        if (!decoded) {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Invalid or expired token' 
+            });
+        }
+
+        // Token is valid
+        return res.json({ 
+            success: true, 
+            message: 'Token is valid',
+            user: {
+                id_user: decoded.id_user,
+                email: decoded.email,
+                role: decoded.role
+            }
+        });
+    } catch (error) {
+        console.error('Token verification error:', error);
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
