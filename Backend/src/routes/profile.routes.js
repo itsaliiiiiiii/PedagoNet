@@ -9,7 +9,7 @@ const {
 } = require('../services/profile.service.js');
 
 // Get user profile (own or other user's) 
-router.get('/:userId?', authenticateToken, async (req, res) => {
+router.get('/:userId', authenticateToken, async (req, res) => {
     try {
         const targetUserId = req.params.userId || req.user.id_user;
         const result = await getUserProfile(targetUserId);

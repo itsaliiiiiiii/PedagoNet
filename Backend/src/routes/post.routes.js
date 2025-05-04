@@ -193,4 +193,42 @@ router.get('/seen', authenticateToken, async (req, res) => {
     }
 });
 
+// Get a specific post (moved after /seen to avoid route conflicts)
+router.get('/:id', authenticateToken, async (req, res) => {
+    try {
+        const result = await getPostById(req.params.id);
+
+        if (!result.success) {
+            return res.status(404).json(result);
+        }
+
+        const post = result.post;
+
+        // Check visibility permissions
+        if (post.visibility === 'private' && post.author.id !== req.user.id_user) {
+            return res.status(403).json({
+                success: false,
+                message: 'Not authorized to view this post'
+            });
+        }
+
+        if (post.visibility === 'connections' && 
+            !(await isConnected(post.author.id, req.user.id_user)) && 
+            post.author.id !== req.user.id_user) {
+            return res.status(403).json({
+                success: false,
+                message: 'Not authorized to view this post'
+            });
+        }
+
+        res.json({
+            success: true,
+            post
+        });
+    } catch (error) {
+        console.error('Post retrieval error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
 module.exports = router;
