@@ -8,7 +8,23 @@ const {
     updateProfilePhoto 
 } = require('../services/profile.service.js');
 
-// Get user profile (own or other user's) 
+// Get user profile (owner) 
+router.get('/MyProfile', authenticateToken, async (req, res) => {
+    try {
+        const result = await getUserProfile(req.user.id_user);
+        
+        if (!result.success) {
+            return res.status(404).json(result);
+        }
+        
+        res.json(result);
+    } catch (error) {
+        console.error('Profile retrieval error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Get user profile (other user's) 
 router.get('/:userId', authenticateToken, async (req, res) => {
     try {
         const targetUserId = req.params.userId || req.user.id_user;
