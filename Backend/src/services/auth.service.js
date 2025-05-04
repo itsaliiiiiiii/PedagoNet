@@ -183,7 +183,6 @@ const login = async (email, password) => {
         if (!user) {
             return { success: false, message: 'Email not found' };
         }
-        console.log(user);
 
         // Verify password
         if (!password) {
@@ -205,7 +204,12 @@ const login = async (email, password) => {
         return {
             success: true,
             message: 'Login successful',
-            token: token
+            token: token,
+            user: {
+                id_user: user.id_user,
+                email: user.email,
+                role: user.role
+            }
         };
     } catch (error) {
         console.error('Login error:', error);
