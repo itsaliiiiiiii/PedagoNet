@@ -34,6 +34,7 @@ export default function LoginForm() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ email, password }),
+        credentials: 'include',
       })
 
       if (!response.ok) {
