@@ -6,78 +6,28 @@ const driver = neo4j.driver(
     neo4j.auth.basic(process.env.NEO4J_USERNAME, process.env.NEO4J_PASSWORD)
 );
 
-// Mark a post as seen by a user
-const markPostAsSeen = async (userId, postId) => {
-    const session = driver.session();
-    try {
-        const result = await session.run(
-            `MATCH (user:User {id_user: $userId}), (post:Post {id: $postId})
-             WHERE NOT (user)-[:SEEN]->(post)
-             CREATE (user)-[r:SEEN {timestamp: datetime()}]->(post)
-             RETURN r`,
-            { userId, postId }
-        );
-        return { success: true };
-    } catch (error) {
-        console.error('Mark post as seen error:', error);
-        return { success: false, message: 'Failed to mark post as seen' };
-    } finally {
-        await session.close();
-    }
-};
+const postRepository = require('../repositories/post.repository');
 
-// Get all posts seen by a user
-const getSeenPosts = async (userId) => {
-    const session = driver.session();
-    try {
-        const result = await session.run(
-            `MATCH (user:User {id_user: $userId})-[r:SEEN]->(post:Post)
-             RETURN post.id as postId, r.timestamp as seenAt
-             ORDER BY r.timestamp DESC`,
-            { userId }
-        );
-        
-        return {
-            success: true,
-            seenPosts: result.records.map(record => ({
-                postId: record.get('postId'),
-                seenAt: record.get('seenAt').toString()
-            }))
-        };
-    } catch (error) {
-        console.error('Get seen posts error:', error);
-        return { success: false, message: 'Failed to get seen posts' };
-    } finally {
-        await session.close();
-    }
-};
-
-// Create a new post
 const createPost = async (authorId, content, visibility = 'public', attachments = []) => {
-    const session = driver.session();
     try {
-        const result = await session.run(
-            `MATCH (author:User {id_user: $authorId})
-             CREATE (p:Post {
-                id: randomUUID(),
-                content: $content,
-                visibility: $visibility,
-                attachments: $attachments,
-                createdAt: datetime(),
-                updatedAt: datetime()
-             })
-             CREATE (author)-[:AUTHORED]->(p)
-             RETURN p, author`,
-            { authorId, content, visibility, attachments }
-        );
+        const attachmentStrings = attachments.map(attachment => JSON.stringify({
+            filename: attachment.filename,
+            originalName: attachment.originalName,
+            mimetype: attachment.mimetype,
+            size: attachment.size
+        }));
 
-        const post = result.records[0].get('p').properties;
-        const author = result.records[0].get('author').properties;
+        const result = await postRepository.createPost(authorId, content, visibility, attachmentStrings);
+        if (!result) {
+            return { success: false, message: 'Failed to create post' };
+        }
 
+        const { post, author } = result;
         return {
             success: true,
             post: {
                 ...post,
+                attachments: post.attachments.map(att => JSON.parse(att)),
                 author: {
                     id: author.id_user,
                     firstName: author.firstName,
@@ -88,77 +38,42 @@ const createPost = async (authorId, content, visibility = 'public', attachments 
     } catch (error) {
         console.error('Post creation error:', error);
         return { success: false, message: 'Failed to create post' };
-    } finally {
-        await session.close();
     }
 };
 
-// Get posts with visibility filtering
 const getPosts = async (userId, connectedUserIds, limit = 10, skip = 0) => {
-    const session = driver.session();
     try {
-        const result = await session.run(
-            `MATCH (author:User)-[:AUTHORED]->(p:Post), (author:User)-[:CONNECTION]->(author2:User)
-             WHERE author2.id_user IN $userIds
-             AND (p.visibility = 'public' OR p.visibility = 'connections')
-             AND NOT EXISTS {
-                 MATCH (viewer:User {id_user: $userId})-[:SEEN]->(p)
-             }
-             RETURN p, author
-             ORDER BY p.createdAt DESC
-             SKIP $skip
-             LIMIT $limit`,
-            { 
-                userId,
-                userIds: [userId, ...connectedUserIds],
-                skip: neo4j.int(skip),
-                limit: neo4j.int(limit)
+        const results = await postRepository.getPosts(userId, connectedUserIds, limit, skip);
+        const posts = results.map(({ post, author }) => ({
+            ...post,
+            attachments: post.attachments ? post.attachments.map(att => JSON.parse(att)) : [],
+            author: {
+                id: author.id_user,
+                firstName: author.firstName,
+                lastName: author.lastName
             }
-        );
-
-        const posts = result.records.map(record => {
-            const post = record.get('p').properties;
-            const author = record.get('author').properties;
-            return {
-                ...post,
-                author: {
-                    id: author.id_user,
-                    firstName: author.firstName,
-                    lastName: author.lastName
-                }
-            };
-        });
+        }));
 
         return { success: true, posts };
     } catch (error) {
         console.error('Posts retrieval error:', error);
         return { success: false, message: 'Failed to retrieve posts' };
-    } finally {
-        await session.close();
     }
 };
 
-// Get a specific post
 const getPostById = async (postId) => {
-    const session = driver.session();
     try {
-        const result = await session.run(
-            `MATCH (author:User)-[:AUTHORED]->(p:Post {id_post: $postId})
-             RETURN p, author`,
-            { postId }
-        );
-
-        if (result.records.length === 0) {
+        const result = await postRepository.getPostById(postId);
+        if (!result) {
             return { success: false, message: 'Post not found' };
         }
 
-        const post = result.records[0].get('p').properties;
-        const author = result.records[0].get('author').properties;
-
+        const { post, author } = result;
         return {
             success: true,
             post: {
                 ...post,
+                attachments: post.attachments ? post.attachments.map(att => JSON.parse(att)) : [],
                 author: {
                     id: author.id_user,
                     firstName: author.firstName,
@@ -169,44 +84,28 @@ const getPostById = async (postId) => {
     } catch (error) {
         console.error('Post retrieval error:', error);
         return { success: false, message: 'Failed to retrieve post' };
-    } finally {
-        await session.close();
     }
 };
 
-// Update a post
 const updatePost = async (postId, authorId, updates) => {
-    const session = driver.session();
     try {
-        let updateStatements = [];
-        let params = { postId, authorId };
+        if (updates.attachments) {
+            updates.attachments = updates.attachments.map(att => 
+                typeof att === 'string' ? att : JSON.stringify(att)
+            );
+        }
 
-        Object.entries(updates).forEach(([key, value]) => {
-            if (key !== 'id' && key !== 'author') {
-                updateStatements.push(`p.${key} = $${key}`);
-                params[key] = value;
-            }
-        });
-        updateStatements.push('p.updatedAt = datetime()');
-
-        const result = await session.run(
-            `MATCH (author:User {id_user: $authorId})-[:AUTHORED]->(p:Post {id: $postId})
-             SET ${updateStatements.join(', ')}
-             RETURN p, author`,
-            params
-        );
-
-        if (result.records.length === 0) {
+        const result = await postRepository.updatePost(postId, authorId, updates);
+        if (!result) {
             return { success: false, message: 'Post not found or not authorized' };
         }
 
-        const post = result.records[0].get('p').properties;
-        const author = result.records[0].get('author').properties;
-
+        const { post, author } = result;
         return {
             success: true,
             post: {
                 ...post,
+                attachments: post.attachments ? post.attachments.map(att => JSON.parse(att)) : [],
                 author: {
                     id: author.id_user,
                     firstName: author.firstName,
@@ -217,32 +116,45 @@ const updatePost = async (postId, authorId, updates) => {
     } catch (error) {
         console.error('Post update error:', error);
         return { success: false, message: 'Failed to update post' };
-    } finally {
-        await session.close();
     }
 };
 
-// Delete a post
 const deletePost = async (postId, authorId) => {
-    const session = driver.session();
     try {
-        const result = await session.run(
-            `MATCH (author:User {id_user: $authorId})-[:AUTHORED]->(p:Post {id: $postId})
-             DETACH DELETE p
-             RETURN count(p) as deleted`,
-            { postId, authorId }
-        );
-
-        const deleted = result.records[0].get('deleted').toNumber();
+        const deleted = await postRepository.deletePost(postId, authorId);
         return {
-            success: deleted > 0,
-            message: deleted > 0 ? 'Post deleted successfully' : 'Post not found or not authorized'
+            success: deleted,
+            message: deleted ? 'Post deleted successfully' : 'Post not found or not authorized'
         };
     } catch (error) {
         console.error('Post deletion error:', error);
         return { success: false, message: 'Failed to delete post' };
-    } finally {
-        await session.close();
+    }
+};
+
+const markPostAsSeen = async (userId, postId) => {
+    try {
+        const marked = await postRepository.markPostAsSeen(userId, postId);
+        return {
+            success: marked,
+            message: marked ? 'Post marked as seen' : 'Failed to mark post as seen'
+        };
+    } catch (error) {
+        console.error('Mark post as seen error:', error);
+        return { success: false, message: 'Failed to mark post as seen' };
+    }
+};
+
+const getSeenPosts = async (userId) => {
+    try {
+        const seenPosts = await postRepository.getSeenPosts(userId);
+        return {
+            success: true,
+            seenPosts
+        };
+    } catch (error) {
+        console.error('Get seen posts error:', error);
+        return { success: false, message: 'Failed to get seen posts' };
     }
 };
 
