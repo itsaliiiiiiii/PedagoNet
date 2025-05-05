@@ -1,18 +1,25 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth.middleware');
+const upload = require('../config/upload');
 const { createPost, getPosts, getPostById, updatePost, deletePost, markPostAsSeen, getSeenPosts } = require('../services/post.service');
 const { getConnections } = require('../services/neo4j.service');
 
-
-// Create a new post
-router.post('/', authenticateToken, async (req, res) => {
+// Create a new post with file uploads
+router.post('/', authenticateToken, upload.array('attachments', 5), async (req, res) => {
     try {
+        const attachments = req.files ? req.files.map(file => ({
+            filename: file.filename,
+            originalName: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size
+        })) : [];
+
         const result = await createPost(
             req.user.id_user,
-            req.body.visibility || 'public',
             req.body.content,
-            req.body.attachments || []
+            req.body.visibility || 'public',
+            attachments
         );
 
         if (!result.success) {
@@ -26,6 +33,43 @@ router.post('/', authenticateToken, async (req, res) => {
         });
     } catch (error) {
         console.error('Post creation error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Update a post with file uploads
+router.put('/:id', authenticateToken, upload.array('attachments', 5), async (req, res) => {
+    try {
+        const newAttachments = req.files ? req.files.map(file => ({
+            filename: file.filename,
+            originalName: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size
+        })) : [];
+
+        const existingAttachments = req.body.existingAttachments ? JSON.parse(req.body.existingAttachments) : [];
+
+        const result = await updatePost(
+            req.params.id,
+            req.user.id_user,
+            {
+                content: req.body.content,
+                visibility: req.body.visibility,
+                attachments: [...existingAttachments, ...newAttachments]
+            }
+        );
+
+        if (!result.success) {
+            return res.status(result.message.includes('not found') ? 404 : 403).json(result);
+        }
+
+        res.json({
+            success: true,
+            message: 'Post updated successfully',
+            post: result.post
+        });
+    } catch (error) {
+        console.error('Post update error:', error);
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });

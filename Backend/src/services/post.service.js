@@ -56,6 +56,14 @@ const getSeenPosts = async (userId) => {
 const createPost = async (authorId, content, visibility = 'public', attachments = []) => {
     const session = driver.session();
     try {
+        // Convert attachments to array of strings
+        const attachmentStrings = attachments.map(attachment => JSON.stringify({
+            filename: attachment.filename,
+            originalName: attachment.originalName,
+            mimetype: attachment.mimetype,
+            size: attachment.size
+        }));
+
         const result = await session.run(
             `MATCH (author:User {id_user: $authorId})
              CREATE (p:Post {
@@ -68,22 +76,31 @@ const createPost = async (authorId, content, visibility = 'public', attachments 
              })
              CREATE (author)-[:AUTHORED]->(p)
              RETURN p, author`,
-            { authorId, content, visibility, attachments }
+            { 
+                authorId, 
+                content, 
+                visibility, 
+                attachments: attachmentStrings 
+            }
         );
 
         const post = result.records[0].get('p').properties;
         const author = result.records[0].get('author').properties;
 
+        // Parse attachments back to objects when returning
+        const parsedPost = {
+            ...post,
+            attachments: post.attachments ? post.attachments.map(att => JSON.parse(att)) : [],
+            author: {
+                id: author.id_user,
+                firstName: author.firstName,
+                lastName: author.lastName
+            }
+        };
+
         return {
             success: true,
-            post: {
-                ...post,
-                author: {
-                    id: author.id_user,
-                    firstName: author.firstName,
-                    lastName: author.lastName
-                }
-            }
+            post: parsedPost
         };
     } catch (error) {
         console.error('Post creation error:', error);
@@ -98,9 +115,10 @@ const getPosts = async (userId, connectedUserIds, limit = 10, skip = 0) => {
     const session = driver.session();
     try {
         const result = await session.run(
-            `MATCH (author:User)-[:AUTHORED]->(p:Post), (author:User)-[:CONNECTION]->(author2:User)
-             WHERE author2.id_user IN $userIds
-             AND (p.visibility = 'public' OR p.visibility = 'connections')
+            `MATCH (author:User)-[:AUTHORED]->(p:Post)
+             WHERE (p.visibility = 'public' 
+                   OR (p.visibility = 'connections' AND author.id_user IN $userIds)
+                   OR author.id_user = $userId)
              AND NOT EXISTS {
                  MATCH (viewer:User {id_user: $userId})-[:SEEN]->(p)
              }
