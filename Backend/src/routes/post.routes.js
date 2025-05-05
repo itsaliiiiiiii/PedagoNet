@@ -275,4 +275,49 @@ router.get('/:id', authenticateToken, async (req, res) => {
     }
 });
 
+// Get all posts by user ID
+router.get('/user/:userId', authenticateToken, async (req, res) => {
+    try {
+        const targetUserId = req.params.userId;
+        const viewerId = req.user.id_user;
+        const isViewerConnected = await isConnected(targetUserId, viewerId);
+        
+        // Get all posts by the target user
+        const result = await session.run(
+            `MATCH (author:User {id_user: $targetUserId})-[:AUTHORED]->(p:Post)
+             WHERE (p.visibility = 'public' 
+                   OR (p.visibility = 'connections' AND $isConnected)
+                   OR $viewerId = $targetUserId)
+             RETURN p, author
+             ORDER BY p.createdAt DESC`,
+            { 
+                targetUserId,
+                viewerId,
+                isConnected: isViewerConnected
+            }
+        );
+
+        const posts = result.records.map(record => {
+            const post = record.get('p').properties;
+            const author = record.get('author').properties;
+            return {
+                ...post,
+                author: {
+                    id: author.id_user,
+                    firstName: author.firstName,
+                    lastName: author.lastName
+                }
+            };
+        });
+
+        res.json({
+            success: true,
+            posts: posts
+        });
+    } catch (error) {
+        console.error('User posts retrieval error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
 module.exports = router;
