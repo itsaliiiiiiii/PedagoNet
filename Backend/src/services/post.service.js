@@ -158,6 +158,26 @@ const getSeenPosts = async (userId) => {
     }
 };
 
+const getUserPosts = async (targetUserId, viewerId, isViewerConnected) => {
+    try {
+        const results = await postRepository.getUserPosts(targetUserId, viewerId, isViewerConnected);
+        const posts = results.map(({ post, author }) => ({
+            ...post,
+            attachments: post.attachments ? post.attachments.map(att => JSON.parse(att)) : [],
+            author: {
+                id: author.id_user,
+                firstName: author.firstName,
+                lastName: author.lastName
+            }
+        }));
+
+        return { success: true, posts };
+    } catch (error) {
+        console.error('User posts retrieval error:', error);
+        return { success: false, message: 'Failed to retrieve user posts' };
+    }
+};
+
 module.exports = {
     createPost,
     getPosts,
@@ -165,5 +185,6 @@ module.exports = {
     updatePost,
     deletePost,
     markPostAsSeen,
-    getSeenPosts
+    getSeenPosts,
+    getUserPosts  // Add this to exports
 };
