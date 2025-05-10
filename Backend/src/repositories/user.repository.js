@@ -20,7 +20,7 @@ class UserRepository extends BaseRepository {
 
         const query = `
             CREATE (u:User {
-                id: randomUUID(),
+                id_user: randomUUID(),
                 email: $email,
                 password: $password,
                 firstName: $firstName,

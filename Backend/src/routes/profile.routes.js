@@ -8,7 +8,8 @@ const {
     updateProfilePhoto 
 } = require('../services/profile.service.js');
 
-router.get('/MyProfile', authenticateToken, async (req, res) => {
+// Get user profile (owner) 
+router.get('/me', authenticateToken, async (req, res) => {
     try {
         const result = await getUserProfile(req.user.id_user);
         

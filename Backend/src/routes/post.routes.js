@@ -1,18 +1,34 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth.middleware');
-const { createPost, getPosts, getPostById, updatePost, deletePost, markPostAsSeen, getSeenPosts } = require('../services/post.service');
+const upload = require('../config/upload');
+const { 
+    createPost, 
+    getPosts, 
+    getPostById, 
+    updatePost, 
+    deletePost, 
+    markPostAsSeen, 
+    getSeenPosts,
+    getUserPosts  // Add this import
+} = require('../services/post.service');
 const { getConnections } = require('../services/neo4j.service');
 
-
-// Create a new post
-router.post('/', authenticateToken, async (req, res) => {
+// Create a new post with file uploads
+router.post('/', authenticateToken, upload.array('attachments', 5), async (req, res) => {
     try {
+        const attachments = req.files ? req.files.map(file => ({
+            filename: file.filename,
+            originalName: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size
+        })) : [];
+
         const result = await createPost(
             req.user.id_user,
-            req.body.visibility || 'public',
             req.body.content,
-            req.body.attachments || []
+            req.body.visibility || 'public',
+            attachments
         );
 
         if (!result.success) {
@@ -26,6 +42,43 @@ router.post('/', authenticateToken, async (req, res) => {
         });
     } catch (error) {
         console.error('Post creation error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Update a post with file uploads
+router.put('/:id', authenticateToken, upload.array('attachments', 5), async (req, res) => {
+    try {
+        const newAttachments = req.files ? req.files.map(file => ({
+            filename: file.filename,
+            originalName: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size
+        })) : [];
+
+        const existingAttachments = req.body.existingAttachments ? JSON.parse(req.body.existingAttachments) : [];
+
+        const result = await updatePost(
+            req.params.id,
+            req.user.id_user,
+            {
+                content: req.body.content,
+                visibility: req.body.visibility,
+                attachments: [...existingAttachments, ...newAttachments]
+            }
+        );
+
+        if (!result.success) {
+            return res.status(result.message.includes('not found') ? 404 : 403).json(result);
+        }
+
+        res.json({
+            success: true,
+            message: 'Post updated successfully',
+            post: result.post
+        });
+    } catch (error) {
+        console.error('Post update error:', error);
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
@@ -238,37 +291,15 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
         const viewerId = req.user.id_user;
         const isViewerConnected = await isConnected(targetUserId, viewerId);
         
-        // Get all posts by the target user
-        const result = await session.run(
-            `MATCH (author:User {id_user: $targetUserId})-[:AUTHORED]->(p:Post)
-             WHERE (p.visibility = 'public' 
-                   OR (p.visibility = 'connections' AND $isConnected)
-                   OR $viewerId = $targetUserId)
-             RETURN p, author
-             ORDER BY p.createdAt DESC`,
-            { 
-                targetUserId,
-                viewerId,
-                isConnected: isViewerConnected
-            }
-        );
+        const result = await getUserPosts(targetUserId, viewerId, isViewerConnected);
 
-        const posts = result.records.map(record => {
-            const post = record.get('p').properties;
-            const author = record.get('author').properties;
-            return {
-                ...post,
-                author: {
-                    id: author.id_user,
-                    firstName: author.firstName,
-                    lastName: author.lastName
-                }
-            };
-        });
+        if (!result.success) {
+            return res.status(500).json(result);
+        }
 
         res.json({
             success: true,
-            posts: posts
+            posts: result.posts
         });
     } catch (error) {
         console.error('User posts retrieval error:', error);

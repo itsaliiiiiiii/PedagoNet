@@ -131,6 +131,27 @@ class PostRepository extends BaseRepository {
             seenAt: record.get('seenAt').toString()
         }));
     }
+
+    async getUserPosts(targetUserId, viewerId, isViewerConnected) {
+        const query = `
+            MATCH (author:User {id_user: $targetUserId})-[:AUTHORED]->(p:Post)
+            WHERE (p.visibility = 'public' 
+                   OR (p.visibility = 'connections' AND $isConnected)
+                   OR $viewerId = $targetUserId)
+            RETURN p, author
+            ORDER BY p.createdAt DESC`;
+    
+        const records = await this.executeQuery(query, { 
+            targetUserId,
+            viewerId,
+            isConnected: isViewerConnected
+        });
+    
+        return records.map(record => ({
+            post: record.get('p').properties,
+            author: record.get('author').properties
+        }));
+    }
 }
 
 module.exports = new PostRepository();

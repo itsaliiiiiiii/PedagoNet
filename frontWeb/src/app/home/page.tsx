@@ -1,21 +1,65 @@
+'use client'
 import Link from "next/link"
 import {
-  ImageIcon,
-  Paperclip,
   User,
-  Video,
+  AlertCircle,
   Calendar,
 
 } from "lucide-react"
 import Post from "@/components/feed/post"
 import DesktopNav from "@/components/navs/desktopnav"
 import MobileNav from "@/components/navs/mobilenav"
+import CreatePost from "@/components/feed/create-post"
+import { useEffect, useState } from "react"
+
+
 
 export default function HomePage() {
+  interface Profile {
+    firstName: string;
+    lastName: string;
+    role: string;
+    department?: string;
+    major?: string;
+  }
+
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await fetch('http://localhost:8080/profile/me', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch profile');
+        }
+
+        const data = await response.json();
+        if (data.success) {
+          setProfile(data.profile);
+        } else {
+          setError(data.message || 'Profile not found');
+        }
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, []);
   return (
     <div className="relative min-h-screen bg-gray-100 dark:bg-gray-900">
-      
-      <DesktopNav/>
+
+      <DesktopNav />
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
@@ -29,15 +73,33 @@ export default function HomePage() {
                 <div className="h-16 w-16 mx-auto -mt-12 rounded-full border-2 border-white dark:border-gray-800 bg-blue-100 dark:bg-gray-700 flex items-center justify-center shadow-sm">
                   <User className="h-8 w-8 text-blue-600 dark:text-gray-300" />
                 </div>
-                <Link
-                  href="/profile"
-                  className="mt-2 text-lg font-medium text-gray-900 dark:text-white hover:underline"
-                >
-                  Jean Dupont
-                </Link>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  Élève en Terminale S • Lycée Victor Hugo
-                </p>
+                {loading ? (
+                  <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading profile...</div>
+                ) : error ? (
+                  <>
+                  
+                  <div className="rounded-md bg-red-50 p-3 mt-2 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4" />
+                      <p>{error}</p>
+                    </div>
+                  </div>
+                  </>
+                ) : (
+                  <>
+                    <Link href="/profile" className="mt-2 text-lg font-medium text-gray-600 dark:text-white hover:text-gray-800 ">
+                      {profile?.lastName} {profile?.firstName}
+                    </Link>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      {profile?.role || "n/a"} •{" "}
+                      {profile?.role === "srofessor"
+                        ? profile?.department || "Department not specified"
+                        : profile?.role === "student"
+                          ? profile?.major || "Major not specified"
+                          : "n/a"}
+                    </p>
+                  </>
+                )}
               </div>
             </div>
 
@@ -72,37 +134,7 @@ export default function HomePage() {
 
           {/* Main Feed */}
           <div className="lg:col-span-2 space-y-4">
-            {/* Create Post - Responsive */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-gray-700 flex items-center justify-center shrink-0">
-                  <User className="h-6 w-6 text-blue-600 dark:text-gray-300" />
-                </div>
-                <div className="flex-1 space-y-3">
-                  <button className="w-full text-left px-4 py-2.5 rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
-                    Démarrer un post...
-                  </button>
-                  <div className="flex flex-wrap justify-between gap-2">
-                    <button className="flex items-center gap-1 px-2 py-1 text-sm rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-                      <ImageIcon className="h-5 w-5 text-blue-500" />
-                      <span>Photo</span>
-                    </button>
-                    <button className="flex items-center gap-1 px-2 py-1 text-sm rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-                      <Video className="h-5 w-5 text-green-500" />
-                      <span>Vidéo</span>
-                    </button>
-                    <button className="flex items-center gap-1 px-2 py-1 text-sm rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-                      <Calendar className="h-5 w-5 text-orange-500" />
-                      <span>Événement</span>
-                    </button>
-                    <button className="flex items-center gap-1 px-2 py-1 text-sm rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-                      <Paperclip className="h-5 w-5 text-purple-500" />
-                      <span>Document</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <CreatePost />
             <Post
               avatar={<User className="h-6 w-6 text-purple-600 dark:text-purple-400" />}
               avatarBg="bg-purple-100 dark:bg-purple-900/30"
@@ -266,7 +298,7 @@ export default function HomePage() {
           </aside>
         </div>
       </main>
-      <MobileNav/>
+      <MobileNav />
     </div>
   )
 }
