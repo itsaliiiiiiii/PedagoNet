@@ -131,8 +131,6 @@ class PostRepository extends BaseRepository {
             seenAt: record.get('seenAt').toString()
         }));
     }
-<<<<<<< HEAD
-=======
 
     async getUserPosts(targetUserId, viewerId, isViewerConnected) {
         const query = `
@@ -154,7 +152,6 @@ class PostRepository extends BaseRepository {
             author: record.get('author').properties
         }));
     }
->>>>>>> main
 }
 
 module.exports = new PostRepository();
