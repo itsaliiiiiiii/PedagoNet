@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ffi';
 
 import 'package:flutter/material.dart';
 import 'package:social_media_app/core/Api.dart';
@@ -88,7 +89,7 @@ class _ProfilePageState extends State<ProfilePage> {
   // ];
 
   Map<String, dynamic>? profile;
-  Map<String, dynamic>? posts;
+  List<Map<dynamic, dynamic>>? posts;
 
   Future<dynamic> fetchProfile() async {
     final url = '${Api.baseUrl}/profile/MyProfile';
@@ -103,8 +104,8 @@ class _ProfilePageState extends State<ProfilePage> {
       );
 
       if (response.statusCode == 200) {
-        print("Profile API fonctionne");
-        print(json.decode(response.body));
+        // print("Profile API fonctionne");
+        // print(json.decode(response.body));
         return json.decode(response.body);
       } else {
         print("Erreur HTTP: ${response.statusCode}");
@@ -116,8 +117,8 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  Future<dynamic> fetchPosts(String id_user) async{
-      final url = '${Api.baseUrl}/profile/MyProfile';
+  Future<dynamic> fetchPosts(String id_user) async {
+    final url = '${Api.baseUrl}/posts/user/$id_user';
 
     try {
       final response = await http.get(
@@ -127,10 +128,10 @@ class _ProfilePageState extends State<ProfilePage> {
           'Content-Type': 'application/json',
         },
       );
-
+      print('$id_user');
       if (response.statusCode == 200) {
-        print("Profile API fonctionne");
         print(json.decode(response.body));
+        print("hello");
         return json.decode(response.body);
       } else {
         print("Erreur HTTP: ${response.statusCode}");
@@ -151,8 +152,13 @@ class _ProfilePageState extends State<ProfilePage> {
   void loadProfile() async {
     try {
       final profileData = await fetchProfile();
+
+      print(profileData);
+      final postData = await fetchPosts(profileData['profile']['id_user']);
+
       setState(() {
-        profile = profileData['profile']; // stocke les données dans l'état
+        profile = profileData['profile'];
+        posts = postData['posts'];
       });
     } catch (e) {
       print("Erreur lors du chargement du profil : $e");
@@ -163,7 +169,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    if (profile == null) {
+    if (profile == null || posts == nullptr) {
       return Center(child: CircularProgressIndicator());
     }
     return Scaffold(
@@ -552,6 +558,9 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildPostsSection() {
+    // if (posts?.length == 0) {
+    //   return Center(child: CircularProgressIndicator());
+    // }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -579,36 +588,36 @@ class _ProfilePageState extends State<ProfilePage> {
             ],
           ),
         ),
-        // ListView.builder(
-        //   shrinkWrap: true,
-        //   physics: NeverScrollableScrollPhysics(),
-        //   itemCount: posts.length,
-        //   itemBuilder: (context, index) {
-        //     final post = posts[index];
-        //     return Container(
-        //       margin: EdgeInsets.only(bottom: 12),
-        //       decoration: BoxDecoration(
-        //         color: Colors.white,
-        //         boxShadow: [
-        //           BoxShadow(
-        //             color: Colors.black.withOpacity(0.05),
-        //             blurRadius: 8,
-        //             offset: Offset(0, 2),
-        //           ),
-        //         ],
-        //       ),
-        //       child: Post(
-        //         name: post['name']!,
-        //         role: post['role']!,
-        //         time: post['time']!,
-        //         description: post['description'],
-        //         imageUrl: post['imageUrl'],
-        //         likes: post['likes'] ?? 0,
-        //         isLiked: post['isLiked'],
-        //       ),
-        //     );
-        //   },
-        // ),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: NeverScrollableScrollPhysics(),
+          itemCount: posts?.length,
+          itemBuilder: (context, index) {
+            final post = posts?[index];
+            return Container(
+              margin: EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Post(
+                  name: post?['author']?['firstName'] ?? 'Nom inconnu',
+                  role: 'Student',
+                  time: post?['createdAt']?['year']?['low'].toString() ??
+                      'inconnu',
+                  description: post?['description'],
+                  imageUrl: post?['imageUrl'],
+                  likes: post?['likes'] ?? 0,
+                  isLiked: true),
+            );
+          },
+        ),
       ],
     );
   }
