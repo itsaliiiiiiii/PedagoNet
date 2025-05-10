@@ -1,105 +1,150 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:social_media_app/core/Api.dart';
 import 'package:social_media_app/screens/FriendPage.dart';
 import 'package:social_media_app/screens/MessagesPage.dart';
 import 'package:social_media_app/screens/ProfilePage.dart';
 import 'package:social_media_app/widgets/homePage/Post/Post.dart';
+import 'package:http/http.dart' as http;
 
-class HomePage extends StatelessWidget {
-  final List<Map<String, dynamic>> posts = [
-    {
-      'name': 'Badr Badr',
-      'role': 'Étudiant GI2',
-      'time': '1h',
-      'description':
-          'Voici mon premier post sur l\'app académique ! Voici mon premier post sur l\'app académique ! Voici mon premier post sur l\'app académique !Voici mon premier post sur l\'app académique !',
-      'imageUrl':
-          'https://media.licdn.com/dms/image/v2/D4D22AQGStRRs6la14g/feedshare-shrink_800/B4DZYXfK8nG4Ag-/0/1744150772065?e=1747267200&v=beta&t=EoR1gz6Usd0RayI-AzPJ93aaxIGoPjYg7RYt0RZMDM0',
-      'likes': 12,
-      'isLiked': false,
-    },
-    {
-      'name': 'Sarah B.',
-      'role': 'Étudiante GI2',
-      'time': '2h',
-      'description': 'Un post sans imageeeeeeeeeeeeeeee.',
-      'likes': 8,
-      'isLiked': false,
-    },
-    {
-      'name': 'Sarah B.',
-      'role': 'Étudiante GI2',
-      'time': '2h',
-      'description': 'Nouveau projet en Flutter terminé !',
-      'imageUrl':
-          'https://media.licdn.com/dms/image/v2/D5622AQHC6U0LmDdu3g/feedshare-shrink_800/B56ZYqUWeIH0Ak-/0/1744466701049?e=1747267200&v=beta&t=5cVOs_2GPFYZUb42Gl46DPyji4j9gGyxlY660DAEttY',
-      'likes': 15,
-      'isLiked': true,
-    },
-    {
-      'name': 'Anas Zerhoun',
-      'role': 'Étudiant GI2',
-      'time': '1h',
-      'description': 'Voici mon premier post sur l\'app académique !',
-      'imageUrl':
-          'https://media.licdn.com/dms/image/v2/D4D22AQGStRRs6la14g/feedshare-shrink_800/B4DZYXfK8nG4Ag-/0/1744150772065?e=1747267200&v=beta&t=EoR1gz6Usd0RayI-AzPJ93aaxIGoPjYg7RYt0RZMDM0',
-      'likes': 20,
-      'isLiked': false,
-    },
-    {
-      'name': 'Sarah B.',
-      'role': 'Étudiante GI2',
-      'time': '2h',
-      'description': 'Nouveau projet en Flutter terminé !',
-      'imageUrl':
-          'https://media.licdn.com/dms/image/v2/D5622AQHC6U0LmDdu3g/feedshare-shrink_800/B56ZYqUWeIH0Ak-/0/1744466701049?e=1747267200&v=beta&t=5cVOs_2GPFYZUb42Gl46DPyji4j9gGyxlY660DAEttY',
-      'likes': 9,
-      'isLiked': false,
-    },
-    {
-      'name': 'Sarah B.',
-      'role': 'Étudiante GI2',
-      'time': '2h',
-      'imageUrl':
-          'https://media.licdn.com/dms/image/v2/D5622AQHC6U0LmDdu3g/feedshare-shrink_800/B56ZYqUWeIH0Ak-/0/1744466701049?e=1747267200&v=beta&t=5cVOs_2GPFYZUb42Gl46DPyji4j9gGyxlY660DAEttY',
-      'likes': 6,
-      'isLiked': false,
-    },
-    {
-      'name': 'Anas Zerhoun',
-      'role': 'Étudiant GI2',
-      'time': '1h',
-      'description': 'Voici mon premier post sur l\'app académique !',
-      'imageUrl':
-          'https://media.licdn.com/dms/image/v2/D4D22AQGStRRs6la14g/feedshare-shrink_800/B4DZYXfK8nG4Ag-/0/1744150772065?e=1747267200&v=beta&t=EoR1gz6Usd0RayI-AzPJ93aaxIGoPjYg7RYt0RZMDM0',
-      'likes': 13,
-      'isLiked': false,
-    },
-  ];
+class HomePage extends StatefulWidget {
+  final String token;
+
+  HomePage({required this.token});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  // final List<Map<String, dynamic>> posts = [
+  //   {
+  //     'name': 'Badr Badr',
+  //     'role': 'Étudiant GI2',
+  //     'time': '1h',
+  //     'description':
+  //         'Voici mon premier post sur l\'app académique ! Voici mon premier post sur l\'app académique ! Voici mon premier post sur l\'app académique !Voici mon premier post sur l\'app académique !',
+  //     'imageUrl':
+  //         'https://media.licdn.com/dms/image/v2/D4D22AQGStRRs6la14g/feedshare-shrink_800/B4DZYXfK8nG4Ag-/0/1744150772065?e=1747267200&v=beta&t=EoR1gz6Usd0RayI-AzPJ93aaxIGoPjYg7RYt0RZMDM0',
+  //     'likes': 12,
+  //     'isLiked': false,
+  //   },
+  //   {
+  //     'name': 'Sarah B.',
+  //     'role': 'Étudiante GI2',
+  //     'time': '2h',
+  //     'description': 'Un post sans imageeeeeeeeeeeeeeee.',
+  //     'likes': 8,
+  //     'isLiked': false,
+  //   },
+  //   {
+  //     'name': 'Sarah B.',
+  //     'role': 'Étudiante GI2',
+  //     'time': '2h',
+  //     'description': 'Nouveau projet en Flutter terminé !',
+  //     'imageUrl':
+  //         'https://media.licdn.com/dms/image/v2/D5622AQHC6U0LmDdu3g/feedshare-shrink_800/B56ZYqUWeIH0Ak-/0/1744466701049?e=1747267200&v=beta&t=5cVOs_2GPFYZUb42Gl46DPyji4j9gGyxlY660DAEttY',
+  //     'likes': 15,
+  //     'isLiked': true,
+  //   },
+  //   {
+  //     'name': 'Anas Zerhoun',
+  //     'role': 'Étudiant GI2',
+  //     'time': '1h',
+  //     'description': 'Voici mon premier post sur l\'app académique !',
+  //     'imageUrl':
+  //         'https://media.licdn.com/dms/image/v2/D4D22AQGStRRs6la14g/feedshare-shrink_800/B4DZYXfK8nG4Ag-/0/1744150772065?e=1747267200&v=beta&t=EoR1gz6Usd0RayI-AzPJ93aaxIGoPjYg7RYt0RZMDM0',
+  //     'likes': 20,
+  //     'isLiked': false,
+  //   },
+  //   {
+  //     'name': 'Sarah B.',
+  //     'role': 'Étudiante GI2',
+  //     'time': '2h',
+  //     'description': 'Nouveau projet en Flutter terminé !',
+  //     'imageUrl':
+  //         'https://media.licdn.com/dms/image/v2/D5622AQHC6U0LmDdu3g/feedshare-shrink_800/B56ZYqUWeIH0Ak-/0/1744466701049?e=1747267200&v=beta&t=5cVOs_2GPFYZUb42Gl46DPyji4j9gGyxlY660DAEttY',
+  //     'likes': 9,
+  //     'isLiked': false,
+  //   },
+  //   {
+  //     'name': 'Sarah B.',
+  //     'role': 'Étudiante GI2',
+  //     'time': '2h',
+  //     'imageUrl':
+  //         'https://media.licdn.com/dms/image/v2/D5622AQHC6U0LmDdu3g/feedshare-shrink_800/B56ZYqUWeIH0Ak-/0/1744466701049?e=1747267200&v=beta&t=5cVOs_2GPFYZUb42Gl46DPyji4j9gGyxlY660DAEttY',
+  //     'likes': 6,
+  //     'isLiked': false,
+  //   },
+  //   {
+  //     'name': 'Anas Zerhoun',
+  //     'role': 'Étudiant GI2',
+  //     'time': '1h',
+  //     'description': 'Voici mon premier post sur l\'app académique !',
+  //     'imageUrl':
+  //         'https://media.licdn.com/dms/image/v2/D4D22AQGStRRs6la14g/feedshare-shrink_800/B4DZYXfK8nG4Ag-/0/1744150772065?e=1747267200&v=beta&t=EoR1gz6Usd0RayI-AzPJ93aaxIGoPjYg7RYt0RZMDM0',
+  //     'likes': 13,
+  //     'isLiked': false,
+  //   },
+  // ];
+
+  List<Map<String, dynamic>> posts = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPosts();
+  }
+
+  Future<void> _fetchPosts() async {
+    print("token ${widget.token}");
+    final response = await http.get(
+      Uri.parse('${Api.baseUrl}/posts'),
+      headers: {'Authorization': 'Bearer ${widget.token}'},
+    );
+
+    if (response.statusCode == 200) {
+      print('response : ${response.body}');
+      // Décoder la réponse JSON
+      final Map<String, dynamic> responseData = json.decode(response.body);
+
+      // Extraire la liste des posts
+      final List<dynamic> postData = responseData['posts'];
+
+      // Mettre à jour l'état avec les données des posts
+      setState(() {
+        posts = postData.map((post) => post as Map<String, dynamic>).toList();
+      });
+    } else {
+      print('Erreur lors de la récupération des posts');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       drawer: Drawer(
-      width: 280,
-      child: Column(
-        children: [
-          _buildDrawerHeader(context),
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                _buildMainNavigation(context),
-                const Divider(height: 1),
-                _buildClassroomSection(context),
-                const Divider(height: 1),
-                _buildAccountSection(context),
-              ],
+        width: 280,
+        child: Column(
+          children: [
+            _buildDrawerHeader(context),
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  _buildMainNavigation(context),
+                  const Divider(height: 1),
+                  _buildClassroomSection(context),
+                  const Divider(height: 1),
+                  _buildAccountSection(context),
+                ],
+              ),
             ),
-          ),
-          _buildFooter(context),
-        ],
+            _buildFooter(context),
+          ],
+        ),
       ),
-    ),
       backgroundColor: Theme.of(context).primaryColor,
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -192,17 +237,21 @@ class HomePage extends StatelessWidget {
         itemBuilder: (context, index) {
           final post = posts[index];
           return Post(
-              name: post['name']!,
-              role: post['role']!,
-              time: post['time']!,
+              name: post['author']['firstName']!,
+              // role: post['role']!,
+              role: 'Student',
+              time: post['createdAt']['year']['low'].toString()!,
               description: post['description'],
               imageUrl: post['imageUrl'],
               likes: post['likes'] ?? 0,
-              isLiked: post['isLiked']);
+              isLiked: true);
+          // isLiked: post['isLiked']);
+          // isLiked:true;
         },
       ),
     );
   }
+
   Widget _buildDrawerHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 50, 16, 16),
@@ -450,7 +499,8 @@ class HomePage extends StatelessWidget {
           },
         ),
         ListTile(
-          leading: Icon(Icons.calendar_today_rounded, color: Colors.purple[700]),
+          leading:
+              Icon(Icons.calendar_today_rounded, color: Colors.purple[700]),
           title: const Text(
             'Emploi du temps',
             style: TextStyle(
@@ -511,7 +561,7 @@ class HomePage extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => ProfilePage(),
+                builder: (context) => ProfilePage(token:widget.token),
               ),
             );
           },
@@ -570,7 +620,8 @@ class HomePage extends StatelessWidget {
             builder: (BuildContext context) {
               return AlertDialog(
                 title: const Text('Déconnexion'),
-                content: const Text('Êtes-vous sûr de vouloir vous déconnecter ?'),
+                content:
+                    const Text('Êtes-vous sûr de vouloir vous déconnecter ?'),
                 actions: [
                   TextButton(
                     onPressed: () {

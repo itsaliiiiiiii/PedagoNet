@@ -8,7 +8,6 @@ const {
     updateProfilePhoto 
 } = require('../services/profile.service.js');
 
-// Get user profile (owner) 
 router.get('/MyProfile', authenticateToken, async (req, res) => {
     try {
         const result = await getUserProfile(req.user.id_user);
@@ -16,7 +15,6 @@ router.get('/MyProfile', authenticateToken, async (req, res) => {
         if (!result.success) {
             return res.status(404).json(result);
         }
-        
         res.json(result);
     } catch (error) {
         console.error('Profile retrieval error:', error);

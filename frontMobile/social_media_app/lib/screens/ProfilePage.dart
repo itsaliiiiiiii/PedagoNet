@@ -1,91 +1,171 @@
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:social_media_app/core/Api.dart';
 import 'package:social_media_app/screens/FriendPage.dart';
 import 'package:social_media_app/widgets/homePage/Post/Post.dart';
+import 'package:http/http.dart' as http;
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  final String token;
+
+  const ProfilePage({super.key, required this.token});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  final List<Map<String, dynamic>> posts = [
-    {
-      'name': 'Anas Zerhoun',
-      'role': 'Étudiant GI2',
-      'time': '1h',
-      'description':
-          'Voici mon premier post sur l\'app académique ! Voici mon premier post sur l\'app académique ! Voici mon premier post sur l\'app académique !Voici mon premier post sur l\'app académique !',
-      'imageUrl':
-          'https://media.licdn.com/dms/image/v2/D4D22AQGStRRs6la14g/feedshare-shrink_800/B4DZYXfK8nG4Ag-/0/1744150772065?e=1747267200&v=beta&t=EoR1gz6Usd0RayI-AzPJ93aaxIGoPjYg7RYt0RZMDM0',
-      'likes': 12,
-      'isLiked': false,
-    },
-    {
-      'name': 'Sarah B.',
-      'role': 'Étudiante GI2',
-      'time': '2h',
-      'description': 'Un post sans imageeeeeeeeeeeeeeee.',
-      'likes': 8,
-      'isLiked': false,
-    },
-    {
-      'name': 'Sarah B.',
-      'role': 'Étudiante GI2',
-      'time': '2h',
-      'description': 'Nouveau projet en Flutter terminé !',
-      'imageUrl':
-          'https://media.licdn.com/dms/image/v2/D5622AQHC6U0LmDdu3g/feedshare-shrink_800/B56ZYqUWeIH0Ak-/0/1744466701049?e=1747267200&v=beta&t=5cVOs_2GPFYZUb42Gl46DPyji4j9gGyxlY660DAEttY',
-      'likes': 15,
-      'isLiked': true,
-    },
-    {
-      'name': 'Anas Zerhoun',
-      'role': 'Étudiant GI2',
-      'time': '1h',
-      'description': 'Voici mon premier post sur l\'app académique !',
-      'imageUrl':
-          'https://media.licdn.com/dms/image/v2/D4D22AQGStRRs6la14g/feedshare-shrink_800/B4DZYXfK8nG4Ag-/0/1744150772065?e=1747267200&v=beta&t=EoR1gz6Usd0RayI-AzPJ93aaxIGoPjYg7RYt0RZMDM0',
-      'likes': 20,
-      'isLiked': false,
-    },
-    {
-      'name': 'Sarah B.',
-      'role': 'Étudiante GI2',
-      'time': '2h',
-      'description': 'Nouveau projet en Flutter terminé !',
-      'imageUrl':
-          'https://media.licdn.com/dms/image/v2/D5622AQHC6U0LmDdu3g/feedshare-shrink_800/B56ZYqUWeIH0Ak-/0/1744466701049?e=1747267200&v=beta&t=5cVOs_2GPFYZUb42Gl46DPyji4j9gGyxlY660DAEttY',
-      'likes': 9,
-      'isLiked': false,
-    },
-    {
-      'name': 'Sarah B.',
-      'role': 'Étudiante GI2',
-      'time': '2h',
-      'imageUrl':
-          'https://media.licdn.com/dms/image/v2/D5622AQHC6U0LmDdu3g/feedshare-shrink_800/B56ZYqUWeIH0Ak-/0/1744466701049?e=1747267200&v=beta&t=5cVOs_2GPFYZUb42Gl46DPyji4j9gGyxlY660DAEttY',
-      'likes': 6,
-      'isLiked': false,
-    },
-    {
-      'name': 'Anas Zerhoun',
-      'role': 'Étudiant GI2',
-      'time': '1h',
-      'description': 'Voici mon premier post sur l\'app académique !',
-      'imageUrl':
-          'https://media.licdn.com/dms/image/v2/D4D22AQGStRRs6la14g/feedshare-shrink_800/B4DZYXfK8nG4Ag-/0/1744150772065?e=1747267200&v=beta&t=EoR1gz6Usd0RayI-AzPJ93aaxIGoPjYg7RYt0RZMDM0',
-      'likes': 13,
-      'isLiked': false,
-    },
-  ];
+  // final List<Map<String, dynamic>> posts = [
+  //   {
+  //     'name': 'Anas Zerhoun',
+  //     'role': 'Étudiant GI2',
+  //     'time': '1h',
+  //     'description':
+  //         'Voici mon premier post sur l\'app académique ! Voici mon premier post sur l\'app académique ! Voici mon premier post sur l\'app académique !Voici mon premier post sur l\'app académique !',
+  //     'imageUrl':
+  //         'https://media.licdn.com/dms/image/v2/D4D22AQGStRRs6la14g/feedshare-shrink_800/B4DZYXfK8nG4Ag-/0/1744150772065?e=1747267200&v=beta&t=EoR1gz6Usd0RayI-AzPJ93aaxIGoPjYg7RYt0RZMDM0',
+  //     'likes': 12,
+  //     'isLiked': false,
+  //   },
+  //   {
+  //     'name': 'Sarah B.',
+  //     'role': 'Étudiante GI2',
+  //     'time': '2h',
+  //     'description': 'Un post sans imageeeeeeeeeeeeeeee.',
+  //     'likes': 8,
+  //     'isLiked': false,
+  //   },
+  //   {
+  //     'name': 'Sarah B.',
+  //     'role': 'Étudiante GI2',
+  //     'time': '2h',
+  //     'description': 'Nouveau projet en Flutter terminé !',
+  //     'imageUrl':
+  //         'https://media.licdn.com/dms/image/v2/D5622AQHC6U0LmDdu3g/feedshare-shrink_800/B56ZYqUWeIH0Ak-/0/1744466701049?e=1747267200&v=beta&t=5cVOs_2GPFYZUb42Gl46DPyji4j9gGyxlY660DAEttY',
+  //     'likes': 15,
+  //     'isLiked': true,
+  //   },
+  //   {
+  //     'name': 'Anas Zerhoun',
+  //     'role': 'Étudiant GI2',
+  //     'time': '1h',
+  //     'description': 'Voici mon premier post sur l\'app académique !',
+  //     'imageUrl':
+  //         'https://media.licdn.com/dms/image/v2/D4D22AQGStRRs6la14g/feedshare-shrink_800/B4DZYXfK8nG4Ag-/0/1744150772065?e=1747267200&v=beta&t=EoR1gz6Usd0RayI-AzPJ93aaxIGoPjYg7RYt0RZMDM0',
+  //     'likes': 20,
+  //     'isLiked': false,
+  //   },
+  //   {
+  //     'name': 'Sarah B.',
+  //     'role': 'Étudiante GI2',
+  //     'time': '2h',
+  //     'description': 'Nouveau projet en Flutter terminé !',
+  //     'imageUrl':
+  //         'https://media.licdn.com/dms/image/v2/D5622AQHC6U0LmDdu3g/feedshare-shrink_800/B56ZYqUWeIH0Ak-/0/1744466701049?e=1747267200&v=beta&t=5cVOs_2GPFYZUb42Gl46DPyji4j9gGyxlY660DAEttY',
+  //     'likes': 9,
+  //     'isLiked': false,
+  //   },
+  //   {
+  //     'name': 'Sarah B.',
+  //     'role': 'Étudiante GI2',
+  //     'time': '2h',
+  //     'imageUrl':
+  //         'https://media.licdn.com/dms/image/v2/D5622AQHC6U0LmDdu3g/feedshare-shrink_800/B56ZYqUWeIH0Ak-/0/1744466701049?e=1747267200&v=beta&t=5cVOs_2GPFYZUb42Gl46DPyji4j9gGyxlY660DAEttY',
+  //     'likes': 6,
+  //     'isLiked': false,
+  //   },
+  //   {
+  //     'name': 'Anas Zerhoun',
+  //     'role': 'Étudiant GI2',
+  //     'time': '1h',
+  //     'description': 'Voici mon premier post sur l\'app académique !',
+  //     'imageUrl':
+  //         'https://media.licdn.com/dms/image/v2/D4D22AQGStRRs6la14g/feedshare-shrink_800/B4DZYXfK8nG4Ag-/0/1744150772065?e=1747267200&v=beta&t=EoR1gz6Usd0RayI-AzPJ93aaxIGoPjYg7RYt0RZMDM0',
+  //     'likes': 13,
+  //     'isLiked': false,
+  //   },
+  // ];
+
+  Map<String, dynamic>? profile;
+  Map<String, dynamic>? posts;
+
+  Future<dynamic> fetchProfile() async {
+    final url = '${Api.baseUrl}/profile/MyProfile';
+
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Authorization': 'Bearer ${widget.token}',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        print("Profile API fonctionne");
+        print(json.decode(response.body));
+        return json.decode(response.body);
+      } else {
+        print("Erreur HTTP: ${response.statusCode}");
+        throw Exception('Failed to fetch profile: ${response.statusCode}');
+      }
+    } catch (e) {
+      print("Erreur de requête: $e");
+      throw Exception('Error fetching profile: $e');
+    }
+  }
+
+  Future<dynamic> fetchPosts(String id_user) async{
+      final url = '${Api.baseUrl}/profile/MyProfile';
+
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Authorization': 'Bearer ${widget.token}',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        print("Profile API fonctionne");
+        print(json.decode(response.body));
+        return json.decode(response.body);
+      } else {
+        print("Erreur HTTP: ${response.statusCode}");
+        throw Exception('Failed to fetch profile: ${response.statusCode}');
+      }
+    } catch (e) {
+      print("Erreur de requête: $e");
+      throw Exception('Error fetching profile: $e');
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    loadProfile();
+  }
+
+  void loadProfile() async {
+    try {
+      final profileData = await fetchProfile();
+      setState(() {
+        profile = profileData['profile']; // stocke les données dans l'état
+      });
+    } catch (e) {
+      print("Erreur lors du chargement du profil : $e");
+    }
+  }
 
   bool isFollowing = false;
 
   @override
   Widget build(BuildContext context) {
+    if (profile == null) {
+      return Center(child: CircularProgressIndicator());
+    }
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(),
@@ -142,7 +222,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
           ),
-          
+
           // Profile picture with border and shadow
           Positioned(
             top: 85,
@@ -166,7 +246,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   backgroundColor: Colors.white,
                   child: ClipOval(
                     child: Image.network(
-          'https://media.licdn.com/dms/image/v2/D4D22AQGStRRs6la14g/feedshare-shrink_800/B4DZYXfK8nG4Ag-/0/1744150772065?e=1747267200&v=beta&t=EoR1gz6Usd0RayI-AzPJ93aaxIGoPjYg7RYt0RZMDM0',
+                      'https://media.licdn.com/dms/image/v2/D4D22AQGStRRs6la14g/feedshare-shrink_800/B4DZYXfK8nG4Ag-/0/1744150772065?e=1747267200&v=beta&t=EoR1gz6Usd0RayI-AzPJ93aaxIGoPjYg7RYt0RZMDM0',
                       fit: BoxFit.cover,
                       width: 124,
                       height: 124,
@@ -176,7 +256,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
           ),
-          
+
           Positioned(
             top: 10,
             right: 10,
@@ -192,7 +272,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
           ),
-          
+
           Positioned(
             top: 180,
             left: 105,
@@ -231,7 +311,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Imad Tahiri",
+                      '${profile?['firstName']} ${profile?['lastName']}',
                       style: TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
@@ -240,27 +320,14 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     SizedBox(height: 4),
                     Text(
-                      "Software Engineering Student",
+                      '${profile?['bio']}',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 14,
                         color: Colors.black54,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                     SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
-                        SizedBox(width: 4),
-                        Text(
-                          "Khouribga, Maroc",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
                   ],
                 ),
               ),
@@ -270,7 +337,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                       borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -280,30 +347,24 @@ class _ProfilePageState extends State<ProfilePage> {
                         TextButton(
                           child: Text(
                             "209 relations",
-                          style: TextStyle(
-                            color: Colors.blue[700],
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
+                            style: TextStyle(
+                              color: Colors.blue[700],
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
                           ),
-                          ),
-                          onPressed: ()=>{
-                            Navigator.push(context, MaterialPageRoute(
-                              builder: (context) => FriendsPage(),
-                            ))
+                          onPressed: () => {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => FriendsPage(),
+                                ))
                           },
                         ),
                       ],
                     ),
                   ),
                   SizedBox(height: 8),
-                  Text(
-                    "Ensa Khouribga",
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[700],
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
                 ],
               ),
             ],
@@ -433,7 +494,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: isFollowing ? Colors.grey[200] : Colors.blue[600],
+                backgroundColor:
+                    isFollowing ? Colors.grey[200] : Colors.blue[600],
                 padding: EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -517,36 +579,36 @@ class _ProfilePageState extends State<ProfilePage> {
             ],
           ),
         ),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
-          itemCount: posts.length,
-          itemBuilder: (context, index) {
-            final post = posts[index];
-            return Container(
-              margin: EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Post(
-                name: post['name']!,
-                role: post['role']!,
-                time: post['time']!,
-                description: post['description'],
-                imageUrl: post['imageUrl'],
-                likes: post['likes'] ?? 0,
-                isLiked: post['isLiked'],
-              ),
-            );
-          },
-        ),
+        // ListView.builder(
+        //   shrinkWrap: true,
+        //   physics: NeverScrollableScrollPhysics(),
+        //   itemCount: posts.length,
+        //   itemBuilder: (context, index) {
+        //     final post = posts[index];
+        //     return Container(
+        //       margin: EdgeInsets.only(bottom: 12),
+        //       decoration: BoxDecoration(
+        //         color: Colors.white,
+        //         boxShadow: [
+        //           BoxShadow(
+        //             color: Colors.black.withOpacity(0.05),
+        //             blurRadius: 8,
+        //             offset: Offset(0, 2),
+        //           ),
+        //         ],
+        //       ),
+        //       child: Post(
+        //         name: post['name']!,
+        //         role: post['role']!,
+        //         time: post['time']!,
+        //         description: post['description'],
+        //         imageUrl: post['imageUrl'],
+        //         likes: post['likes'] ?? 0,
+        //         isLiked: post['isLiked'],
+        //       ),
+        //     );
+        //   },
+        // ),
       ],
     );
   }
