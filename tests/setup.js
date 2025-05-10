@@ -2,8 +2,8 @@ const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const neo4j = require('neo4j-driver');
 const jwt = require('jsonwebtoken');
-const userService = require('../src/services/user.service');
-const { neo4jDriver } = require('../src/config/database');
+const userService = require('../Backend/src/services/user.service');
+const { neo4jDriver } = require('../Backend/src/config/database');
 
 let mongoServer;
 let neo4jSession;
