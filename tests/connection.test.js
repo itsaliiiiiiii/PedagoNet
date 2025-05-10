@@ -1,9 +1,9 @@
 const request = require('supertest');
 const express = require('express');
-const connectionRoutes = require('../src/routes/connection.routes');
+const connectionRoutes = require('../Backend/src/routes/connection.routes');
 const { generateTestToken, createTestUser } = require('./setup');
-const { neo4jDriver } = require('../src/config/database');
-const neo4jService = require('../src/services/neo4j.service');
+const { neo4jDriver } = require('../Backend/src/config/database');
+const neo4jService = require('../Backend/src/services/neo4j.service');
 
 const app = express();
 app.use(express.json());

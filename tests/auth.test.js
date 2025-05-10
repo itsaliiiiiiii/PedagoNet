@@ -1,7 +1,7 @@
 const request = require('supertest');
 const express = require('express');
 const cookieParser = require('cookie-parser');
-const authRoutes = require('../src/routes/auth.routes');
+const authRoutes = require('../Backend/src/routes/auth.routes');
 const { generateTestToken } = require('./setup');
 
 const app = express();

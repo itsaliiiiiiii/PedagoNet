@@ -1,6 +1,6 @@
 const request = require('supertest');
 const express = require('express');
-const seenRoutes = require('../src/routes/seen.routes');
+const seenRoutes = require('../Backend/src/routes/seen.routes');
 const { generateTestToken, createTestUser } = require('./setup');
 
 const app = express();
