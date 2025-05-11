@@ -1,12 +1,14 @@
 const neo4j = require('neo4j-driver');
 require('dotenv').config();
 
-const driver = neo4j.driver(
-    process.env.NEO4J_URI,
-    neo4j.auth.basic(process.env.NEO4J_USERNAME, process.env.NEO4J_PASSWORD)
-);
-
 const postRepository = require('../repositories/post.repository');
+
+const formatAuthor = (author) => ({
+    id: author.id_user,
+    firstName: author.firstName,
+    lastName: author.lastName,
+    profilePhotoUrl: author.profilePhoto ? `/upload/${author.profilePhoto.filename}` : null
+});
 
 const createPost = async (authorId, content, visibility = 'public', attachments = []) => {
     try {
@@ -28,11 +30,7 @@ const createPost = async (authorId, content, visibility = 'public', attachments 
             post: {
                 ...post,
                 attachments: post.attachments.map(att => JSON.parse(att)),
-                author: {
-                    id: author.id_user,
-                    firstName: author.firstName,
-                    lastName: author.lastName
-                }
+                author: formatAuthor(author)
             }
         };
     } catch (error) {
@@ -47,11 +45,7 @@ const getPosts = async (userId, connectedUserIds, limit = 10, skip = 0) => {
         const posts = results.map(({ post, author }) => ({
             ...post,
             attachments: post.attachments ? post.attachments.map(att => JSON.parse(att)) : [],
-            author: {
-                id: author.id_user,
-                firstName: author.firstName,
-                lastName: author.lastName
-            }
+            author: formatAuthor(author)
         }));
 
         return { success: true, posts };

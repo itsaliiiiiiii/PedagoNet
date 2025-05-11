@@ -40,7 +40,9 @@ class PostRepository extends BaseRepository {
             AND NOT EXISTS {
                 MATCH (viewer:User {id_user: $userId})-[:SEEN]->(p)
             }
-            RETURN p, author
+            OPTIONAL MATCH (p)<-[like:LIKE]-()
+            WITH p, author, COUNT(like) as likesCount
+            RETURN p, author, likesCount
             ORDER BY p.createdAt DESC
             SKIP $skip
             LIMIT $limit`;
@@ -53,7 +55,10 @@ class PostRepository extends BaseRepository {
         });
 
         return records.map(record => ({
-            post: record.get('p').properties,
+            post: {
+                ...record.get('p').properties,
+                likesCount: record.get('likesCount').toNumber()
+            },
             author: record.get('author').properties
         }));
     }
@@ -70,6 +75,28 @@ class PostRepository extends BaseRepository {
             post: records[0].get('p').properties,
             author: records[0].get('author').properties
         };
+    }
+
+    async getUserPosts(targetUserId, viewerId, isViewerConnected) {
+        const query = `
+            MATCH (author:User {id_user: $targetUserId})-[:AUTHORED]->(p:Post)
+            WHERE p.visibility = 'public' OR $targetUserId = $viewerId OR $isViewerConnected = true
+            RETURN p, author
+            ORDER BY p.createdAt DESC`;
+
+        const records = await this.executeQuery(query, { 
+            targetUserId, 
+            viewerId, 
+            isViewerConnected 
+        });
+
+        return records.map(record => ({
+            post: {
+                ...record.get('p').properties,
+                likesCount: record.get('likesCount').toNumber()
+            },
+            author: record.get('author').properties
+        }));
     }
 
     async updatePost(postId, authorId, updates) {
@@ -148,7 +175,10 @@ class PostRepository extends BaseRepository {
         });
     
         return records.map(record => ({
-            post: record.get('p').properties,
+            post: {
+                ...record.get('p').properties,
+                likesCount: record.get('likesCount').toNumber()
+            },
             author: record.get('author').properties
         }));
     }
