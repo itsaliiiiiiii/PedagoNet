@@ -10,8 +10,19 @@ const {
     deletePost, 
     markPostAsSeen, 
     getSeenPosts,
-    getUserPosts  // Add this import
+    getUserPosts,  // Add this import
+    toggleLike,
+    getLikes
 } = require('../services/post.service');
+const {
+    addComment,
+    getComments,
+    updateComment,
+    deleteComment,
+    addReply,
+    getReplies,
+    toggleLike: toggleCommentLike
+} = require('../services/comment.service');
 const { getConnections } = require('../services/neo4j.service');
 
 // Create a new post with file uploads
@@ -303,6 +314,150 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
         });
     } catch (error) {
         console.error('User posts retrieval error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Get users who liked a specific post
+router.get('/:id/likes', authenticateToken, async (req, res) => {
+    try {
+        const result = await getLikes(req.params.id);
+        
+        if (!result.success) {
+            return res.status(400).json(result);
+        }
+        
+        res.json(result);
+    } catch (error) {
+        console.error('Error getting post likes:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Comment routes
+router.post('/:postId/comments', authenticateToken, async (req, res) => {
+    try {
+        const result = await addComment(req.params.postId, req.user.id_user, req.body.content);
+        if (!result.success) {
+            return res.status(500).json(result);
+        }
+        res.status(201).json(result);
+    } catch (error) {
+        console.error('Comment creation error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+router.get('/:postId/comments', authenticateToken, async (req, res) => {
+    try {
+        const result = await getComments(
+            req.params.postId,
+            parseInt(req.query.limit) || 10,
+            parseInt(req.query.skip) || 0
+        );
+        if (!result.success) {
+            return res.status(500).json(result);
+        }
+        res.json(result);
+    } catch (error) {
+        console.error('Comments retrieval error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+router.put('/:postId/comments/:commentId', authenticateToken, async (req, res) => {
+    try {
+        const result = await updateComment(
+            req.params.commentId,
+            req.user.id_user,
+            req.body.content
+        );
+        if (!result.success) {
+            return res.status(result.message.includes('not found') ? 404 : 403).json(result);
+        }
+        res.json(result);
+    } catch (error) {
+        console.error('Comment update error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+router.delete('/:postId/comments/:commentId', authenticateToken, async (req, res) => {
+    try {
+        const result = await deleteComment(req.params.commentId, req.user.id_user);
+        if (!result.success) {
+            return res.status(result.message.includes('not found') ? 404 : 403).json(result);
+        }
+        res.json(result);
+    } catch (error) {
+        console.error('Comment deletion error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Reply routes
+router.post('/:postId/comments/:commentId/replies', authenticateToken, async (req, res) => {
+    try {
+        const result = await addReply(
+            req.params.commentId,
+            req.user.id_user,
+            req.body.content
+        );
+        if (!result.success) {
+            return res.status(500).json(result);
+        }
+        res.status(201).json(result);
+    } catch (error) {
+        console.error('Reply creation error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+router.get('/:postId/comments/:commentId/replies', authenticateToken, async (req, res) => {
+    try {
+        const result = await getReplies(
+            req.params.commentId,
+            parseInt(req.query.limit) || 10,
+            parseInt(req.query.skip) || 0
+        );
+        if (!result.success) {
+            return res.status(500).json(result);
+        }
+        res.json(result);
+    } catch (error) {
+        console.error('Replies retrieval error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Comment like routes
+router.post('/:postId/comments/:commentId/like', authenticateToken, async (req, res) => {
+    try {
+        const result = await toggleCommentLike(req.params.commentId, req.user.id_user);
+        if (!result.success) {
+            return res.status(500).json(result);
+        }
+        res.json(result);
+    } catch (error) {
+        console.error('Comment like toggle error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+router.post('/:postId/comments/:commentId/replies/:replyId/like', authenticateToken, async (req, res) => {
+    try {
+        const result = await toggleCommentLike(
+            req.params.commentId,
+            req.user.id_user,
+            true,
+            req.params.replyId
+        );
+        if (!result.success) {
+            return res.status(500).json(result);
+        }
+        res.json(result);
+    } catch (error) {
+        console.error('Reply like toggle error:', error);
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
