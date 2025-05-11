@@ -3,11 +3,27 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import NavButton from '@/components/navs/navButton';
-import { ChevronDown, Search, User, Home, Users, MessagesSquare, Bell } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { ChevronDown, Search, User, Home, Users, MessagesSquare, Bell,Settings,LogOut } from 'lucide-react';
 import Logo from '@/components/logo';
 
 export default function DesktopNav() {
   const pathname = usePathname();
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [])
 
   return (
     <header className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
@@ -57,14 +73,61 @@ export default function DesktopNav() {
               href="/notifications" 
               active={pathname === '/notifications'} 
             />
-            <div className="flex items-center pl-5 border-l border-gray-300 dark:border-gray-600">
-              <div className="h-7 w-7 rounded-full bg-blue-100 dark:bg-gray-700 flex items-center justify-center">
-                <User className="h-4 w-4 text-blue-600 dark:text-gray-300" />
-              </div>
-              <div className="hidden sm:flex items-center text-xs text-gray-700 dark:text-gray-300">
-                <span className="mx-1">Moi</span>
-                <ChevronDown className="h-4 w-4" />
-              </div>
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                className="flex items-center pl-5 border-l border-gray-300 dark:border-gray-600 focus:outline-none"
+                aria-expanded={isProfileMenuOpen}
+                aria-haspopup="true"
+              >
+                <div className="h-7 w-7 rounded-full bg-blue-100 dark:bg-gray-700 flex items-center justify-center">
+                  <User className="h-4 w-4 text-blue-600 dark:text-gray-300" />
+                </div>
+                <div className="hidden sm:flex items-center text-xs text-gray-700 dark:text-gray-300">
+                  <span className="mx-1">Moi</span>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform duration-200 ${isProfileMenuOpen ? "rotate-180" : ""}`}
+                  />
+                </div>
+              </button>
+
+              {isProfileMenuOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 z-50">
+                  <Link
+                    href="/profile"
+                    className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    onClick={() => setIsProfileMenuOpen(false)}
+                  >
+                    <div className="flex items-center">
+                      <User className="h-4 w-4 mr-2" />
+                      Profil
+                    </div>
+                  </Link>
+                  <Link
+                    href="/settings"
+                    className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    onClick={() => setIsProfileMenuOpen(false)}
+                  >
+                    <div className="flex items-center">
+                      <Settings className="h-4 w-4 mr-2" />
+                      Paramètres
+                    </div>
+                  </Link>
+                  <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+                  <button
+                    className="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    onClick={() => {
+                      console.log("Déconnexion")
+                      setIsProfileMenuOpen(false)
+                    }}
+                  >
+                    <div className="flex items-center">
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Déconnexion
+                    </div>
+                  </button>
+                </div>
+              )}
             </div>
           </nav>
         </div>

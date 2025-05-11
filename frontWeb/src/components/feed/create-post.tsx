@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useRef, useEffect } from "react"
-import { User, ImageIcon, Video, Paperclip, X, Globe, Users, Lock, AlertCircle } from "lucide-react"
+import { User, ImageIcon, Video, Paperclip, X, Globe, Users, Lock, AlertCircle, Trash2 } from "lucide-react"
 
 type VisibilityOption = {
   id: string
@@ -12,11 +12,14 @@ type VisibilityOption = {
   description: string
 }
 
+type MediaType = "images" | "videos" | "documents" | null
+
 export default function CreatePost() {
   const [postContent, setPostContent] = useState("")
   const [selectedImages, setSelectedImages] = useState<File[]>([])
   const [selectedVideos, setSelectedVideos] = useState<File[]>([])
   const [selectedDocs, setSelectedDocs] = useState<File[]>([])
+  const [activeMediaType, setActiveMediaType] = useState<MediaType>(null)
   const [visibilityOpen, setVisibilityOpen] = useState(false)
   const [selectedVisibility, setSelectedVisibility] = useState<VisibilityOption>(visibilityOptions[0])
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -53,40 +56,64 @@ export default function CreatePost() {
     }
   }, [submitSuccess])
 
+  // Update activeMediaType when media selections change
+  useEffect(() => {
+    if (selectedImages.length > 0) {
+      setActiveMediaType("images")
+    } else if (selectedVideos.length > 0) {
+      setActiveMediaType("videos")
+    } else if (selectedDocs.length > 0) {
+      setActiveMediaType("documents")
+    } else {
+      setActiveMediaType(null)
+    }
+  }, [selectedImages, selectedVideos, selectedDocs])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
     setError(null)
-  
+
     try {
-      const attachments: File[] = [...selectedImages, ...selectedVideos, ...selectedDocs]
-  
+      // Only include the active media type in the form data
+      let attachments: File[] = []
+      if (activeMediaType === "images") {
+        attachments = selectedImages
+      } else if (activeMediaType === "videos") {
+        attachments = selectedVideos
+      } else if (activeMediaType === "documents") {
+        attachments = selectedDocs
+      }
+
       const formData = new FormData()
       formData.append("content", postContent)
-      formData.append("visibility", selectedVisibility.id) // or "public"
-  
+      formData.append("visibility", selectedVisibility.id)
+      formData.append("mediaType", activeMediaType || "none")
+
       attachments.forEach((file) => {
         formData.append("attachments", file)
       })
-  
+
       const response = await fetch("http://localhost:8080/posts", {
         method: "POST",
         credentials: "include",
-        body: formData, // <-- Corrected
+        body: formData,
       })
-  
+
       const data = await response.json()
-  
+
       if (!response.ok || !data.success) {
         throw new Error(data.message || "Failed to create post")
       }
-  
+
+      // Reset form
       setPostContent("")
       setSelectedImages([])
       setSelectedVideos([])
       setSelectedDocs([])
+      setActiveMediaType(null)
       setSubmitSuccess(true)
-  
+
       console.log("Post created successfully:", data.post)
     } catch (err: any) {
       setError(err.message || "An error occurred while creating the post")
@@ -98,32 +125,63 @@ export default function CreatePost() {
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setSelectedImages((prev) => [...prev, ...Array.from(e.target.files || [])])
+      // Clear other media types first
+      setSelectedVideos([])
+      setSelectedDocs([])
+      setSelectedImages(Array.from(e.target.files || []))
+      setActiveMediaType("images")
     }
   }
 
   const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setSelectedVideos((prev) => [...prev, ...Array.from(e.target.files || [])])
+      // Clear other media types first
+      setSelectedImages([])
+      setSelectedDocs([])
+      setSelectedVideos(Array.from(e.target.files || []))
+      setActiveMediaType("videos")
     }
   }
 
   const handleDocChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setSelectedDocs((prev) => [...prev, ...Array.from(e.target.files || [])])
+      // Clear other media types first
+      setSelectedImages([])
+      setSelectedVideos([])
+      setSelectedDocs(Array.from(e.target.files || []))
+      setActiveMediaType("documents")
     }
   }
 
   const removeImage = (index: number) => {
-    setSelectedImages((prev) => prev.filter((_, i) => i !== index))
+    const newImages = selectedImages.filter((_, i) => i !== index)
+    setSelectedImages(newImages)
+    if (newImages.length === 0) {
+      setActiveMediaType(null)
+    }
   }
 
   const removeVideo = (index: number) => {
-    setSelectedVideos((prev) => prev.filter((_, i) => i !== index))
+    const newVideos = selectedVideos.filter((_, i) => i !== index)
+    setSelectedVideos(newVideos)
+    if (newVideos.length === 0) {
+      setActiveMediaType(null)
+    }
   }
 
   const removeDoc = (index: number) => {
-    setSelectedDocs((prev) => prev.filter((_, i) => i !== index))
+    const newDocs = selectedDocs.filter((_, i) => i !== index)
+    setSelectedDocs(newDocs)
+    if (newDocs.length === 0) {
+      setActiveMediaType(null)
+    }
+  }
+
+  const clearAllMedia = () => {
+    setSelectedImages([])
+    setSelectedVideos([])
+    setSelectedDocs([])
+    setActiveMediaType(null)
   }
 
   const hasAttachments = selectedImages.length > 0 || selectedVideos.length > 0 || selectedDocs.length > 0
@@ -177,7 +235,17 @@ export default function CreatePost() {
             {/* Prévisualisation des images */}
             {selectedImages.length > 0 && (
               <div className="space-y-2">
-                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Images jointes</h4>
+                <div className="flex justify-between items-center">
+                  <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Images jointes</h4>
+                  <button
+                    type="button"
+                    onClick={clearAllMedia}
+                    className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 flex items-center gap-1"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    Tout effacer
+                  </button>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {selectedImages.map((image, index) => (
                     <div key={`img-${index}`} className="relative group">
@@ -204,7 +272,17 @@ export default function CreatePost() {
             {/* Prévisualisation des vidéos */}
             {selectedVideos.length > 0 && (
               <div className="space-y-2">
-                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Vidéos jointes</h4>
+                <div className="flex justify-between items-center">
+                  <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Vidéos jointes</h4>
+                  <button
+                    type="button"
+                    onClick={clearAllMedia}
+                    className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 flex items-center gap-1"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    Tout effacer
+                  </button>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {selectedVideos.map((video, index) => (
                     <div key={`vid-${index}`} className="relative group">
@@ -230,7 +308,17 @@ export default function CreatePost() {
             {/* Prévisualisation des documents */}
             {selectedDocs.length > 0 && (
               <div className="space-y-2">
-                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Documents joints</h4>
+                <div className="flex justify-between items-center">
+                  <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Documents joints</h4>
+                  <button
+                    type="button"
+                    onClick={clearAllMedia}
+                    className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 flex items-center gap-1"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    Tout effacer
+                  </button>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {selectedDocs.map((doc, index) => (
                     <div key={`doc-${index}`} className="relative group">
@@ -271,7 +359,14 @@ export default function CreatePost() {
                   <button
                     type="button"
                     onClick={() => imageInputRef.current?.click()}
-                    className="flex items-center gap-1 px-3 py-1.5 text-sm rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    disabled={activeMediaType !== null && activeMediaType !== "images"}
+                    className={`flex items-center gap-1 px-3 py-1.5 text-sm rounded-md transition-colors ${
+                      activeMediaType === "images"
+                        ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                        : activeMediaType === null
+                          ? "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          : "text-gray-400 dark:text-gray-600 cursor-not-allowed"
+                    }`}
                   >
                     <ImageIcon className="h-5 w-5 text-blue-500" />
                     <span>Photos</span>
@@ -288,7 +383,14 @@ export default function CreatePost() {
                   <button
                     type="button"
                     onClick={() => videoInputRef.current?.click()}
-                    className="flex items-center gap-1 px-3 py-1.5 text-sm rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    disabled={activeMediaType !== null && activeMediaType !== "videos"}
+                    className={`flex items-center gap-1 px-3 py-1.5 text-sm rounded-md transition-colors ${
+                      activeMediaType === "videos"
+                        ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
+                        : activeMediaType === null
+                          ? "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          : "text-gray-400 dark:text-gray-600 cursor-not-allowed"
+                    }`}
                   >
                     <Video className="h-5 w-5 text-green-500" />
                     <span>Vidéos</span>
@@ -305,7 +407,14 @@ export default function CreatePost() {
                   <button
                     type="button"
                     onClick={() => docInputRef.current?.click()}
-                    className="flex items-center gap-1 px-3 py-1.5 text-sm rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    disabled={activeMediaType !== null && activeMediaType !== "documents"}
+                    className={`flex items-center gap-1 px-3 py-1.5 text-sm rounded-md transition-colors ${
+                      activeMediaType === "documents"
+                        ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
+                        : activeMediaType === null
+                          ? "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          : "text-gray-400 dark:text-gray-600 cursor-not-allowed"
+                    }`}
                   >
                     <Paperclip className="h-5 w-5 text-purple-500" />
                     <span>Documents</span>
