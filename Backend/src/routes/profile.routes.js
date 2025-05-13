@@ -63,7 +63,7 @@ router.put('/photo', authenticateToken, upload.single('profilePhoto'), async (re
             return res.status(400).json({ success: false, message: 'No file uploaded' });
         }
 
-        const result = await updateProfilePhoto(req.user.id_user, req.file.filename);
+        const result = await updateProfilePhoto(req.user.id_user, req.file);
         
         if (!result.success) {
             return res.status(400).json(result);
