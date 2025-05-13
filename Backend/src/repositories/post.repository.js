@@ -52,6 +52,7 @@ class PostRepository extends BaseRepository {
         };
     }
 
+    // In getPosts method
     async getPosts(userId, connectedUserIds, limit = 10, skip = 0) {
         const query = `
             MATCH (author:User)-[:AUTHORED]->(p:Post)
@@ -62,61 +63,78 @@ class PostRepository extends BaseRepository {
                 MATCH (viewer:User {id_user: $userId})-[:SEEN]->(p)
             }
             OPTIONAL MATCH (p)<-[like:LIKE]-()
+            OPTIONAL MATCH (viewer:User {id_user: $userId})-[userLike:LIKE]->(p)
             OPTIONAL MATCH (p)-[:HAS_ATTACHMENT]->(a:Attachment)
-            WITH p, author, COUNT(like) as likesCount, COLLECT(a) as attachments
-            RETURN p, author, likesCount, attachments
+            WITH p, author, COUNT(like) as likesCount, COLLECT(a) as attachments, 
+                 CASE WHEN userLike IS NOT NULL THEN true ELSE false END as hasLiked
+            RETURN p, author, likesCount, attachments, hasLiked
             ORDER BY p.createdAt DESC
             SKIP $skip
             LIMIT $limit`;
-
+    
         const records = await this.executeQuery(query, { 
             userId,
             userIds: [userId, ...connectedUserIds],
             skip: neo4j.int(skip),
             limit: neo4j.int(limit)
         });
-
+    
         return records.map(record => ({
             post: {
                 ...record.get('p').properties,
                 likesCount: record.get('likesCount').toNumber(),
-                attachments: record.get('attachments').map(att => att.properties)
+                attachments: record.get('attachments').map(att => att.properties),
+                hasLiked: record.get('hasLiked')
             },
             author: record.get('author').properties
         }));
     }
 
-    async getPostById(postId) {
+    // In getPostById method
+    async getPostById(postId, userId) {
         const query = `
             MATCH (author:User)-[:AUTHORED]->(p:Post {id: $postId})
-            RETURN p, author`;
-
-        const records = await this.executeQuery(query, { postId });
+            OPTIONAL MATCH (viewer:User {id_user: $userId})-[userLike:LIKE]->(p)
+            OPTIONAL MATCH (p)<-[like:LIKE]-()
+            RETURN p, author, 
+                   COUNT(like) as likesCount,
+                   CASE WHEN userLike IS NOT NULL THEN true ELSE false END as hasLiked`;
+    
+        const records = await this.executeQuery(query, { postId, userId });
         if (records.length === 0) return null;
-
+    
         return {
-            post: records[0].get('p').properties,
+            post: {
+                ...records[0].get('p').properties,
+                likesCount: records[0].get('likesCount').toNumber(),
+                hasLiked: records[0].get('hasLiked')
+            },
             author: records[0].get('author').properties
         };
     }
 
+    // In getUserPosts method
     async getUserPosts(targetUserId, viewerId, isViewerConnected) {
         const query = `
             MATCH (author:User {id_user: $targetUserId})-[:AUTHORED]->(p:Post)
             WHERE p.visibility = 'public' OR $targetUserId = $viewerId OR $isViewerConnected = true
-            RETURN p, author
+            OPTIONAL MATCH (p)<-[like:LIKE]-()
+            OPTIONAL MATCH (viewer:User {id_user: $viewerId})-[userLike:LIKE]->(p)
+            RETURN p, author, COUNT(like) as likesCount,
+                   CASE WHEN userLike IS NOT NULL THEN true ELSE false END as hasLiked
             ORDER BY p.createdAt DESC`;
-
+    
         const records = await this.executeQuery(query, { 
             targetUserId, 
             viewerId, 
             isViewerConnected 
         });
-
+    
         return records.map(record => ({
             post: {
                 ...record.get('p').properties,
-                likesCount: record.get('likesCount').toNumber()
+                likesCount: record.get('likesCount').toNumber(),
+                hasLiked: record.get('hasLiked')
             },
             author: record.get('author').properties
         }));
@@ -206,15 +224,7 @@ class PostRepository extends BaseRepository {
         }));
     }
 
-    async getPostLikedUsers(postId) {
-        const query = `
-            MATCH (user:User)-[:LIKE]->(post:Post {id: $postId})
-            RETURN user
-            ORDER BY user.firstName`;
-
-        const records = await this.executeQuery(query, { postId });
-        return records.map(record => record.get('user').properties);
-    }
+    
 
     async addComment(postId, userId, content) {
         const query = `

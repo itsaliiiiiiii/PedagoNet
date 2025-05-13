@@ -462,4 +462,20 @@ router.post('/:postId/comments/:commentId/replies/:replyId/like', authenticateTo
     }
 });
 
+// Toggle like on a post
+router.post('/:id/like', authenticateToken, async (req, res) => {
+    try {
+        const result = await toggleLike(req.params.id, req.user.id_user);
+        
+        if (!result.success) {
+            return res.status(400).json(result);
+        }
+        
+        res.json(result);
+    } catch (error) {
+        console.error('Error toggling post like:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
 module.exports = router;
