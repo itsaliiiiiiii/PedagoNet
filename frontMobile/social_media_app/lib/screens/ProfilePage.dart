@@ -89,10 +89,10 @@ class _ProfilePageState extends State<ProfilePage> {
   // ];
 
   Map<String, dynamic>? profile;
-  List<Map<dynamic, dynamic>>? posts;
+  List<dynamic>? posts;
 
   Future<dynamic> fetchProfile() async {
-    final url = '${Api.baseUrl}/profile/MyProfile';
+    final url = '${Api.baseUrl}/profile/me';
 
     try {
       final response = await http.get(
@@ -104,8 +104,7 @@ class _ProfilePageState extends State<ProfilePage> {
       );
 
       if (response.statusCode == 200) {
-        // print("Profile API fonctionne");
-        // print(json.decode(response.body));
+        
         return json.decode(response.body);
       } else {
         print("Erreur HTTP: ${response.statusCode}");

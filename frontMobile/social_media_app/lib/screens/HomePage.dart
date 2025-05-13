@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:social_media_app/core/Api.dart';
+import 'package:social_media_app/screens/CreatePostPage.dart';
 import 'package:social_media_app/screens/FriendPage.dart';
 import 'package:social_media_app/screens/MessagesPage.dart';
 import 'package:social_media_app/screens/ProfilePage.dart';
@@ -231,24 +232,82 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
-      body: ListView.builder(
-        padding: EdgeInsets.all(10),
-        itemCount: posts.length,
-        itemBuilder: (context, index) {
-          final post = posts[index];
-          return Post(
-              name: post['author']['firstName']!,
-              // role: post['role']!,
-              role: 'Student',
-              time: post['createdAt']['year']['low'].toString()!,
-              description: post['description'],
-              imageUrl: post['imageUrl'],
-              likes: post['likes'] ?? 0,
-              isLiked: true);
-          // isLiked: post['isLiked']);
-          // isLiked:true;
-        },
+      body: ListView(
+  padding: const EdgeInsets.all(10),
+  children: [
+    GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CreatePostPage(token: widget.token),
+          ),
+        ).then((value) {
+          if (value == true) {
+            _fetchPosts();
+          }
+        });
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 5,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            const CircleAvatar(
+              backgroundColor: Color.fromARGB(255, 137, 136, 136),
+              radius: 20,
+              child: Icon(
+                Icons.person,
+                size: 30,
+                color: Color.fromARGB(255, 59, 58, 58),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Quoi de neuf?',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            Icon(
+              Icons.photo_library,
+              color: Colors.blue[400],
+            ),
+            const SizedBox(width: 12),
+            Icon(
+              Icons.attach_file,
+              color: Colors.green[400],
+            ),
+          ],
+        ),
       ),
+    ),
+    ...posts.map((post) => Post(
+      name: post['author']['firstName']!,
+      role: 'Student',
+      time: post['createdAt']['year']['low'].toString(),
+      description: post['description'],
+      imageUrl: post['imageUrl'],
+      likes: post['likes'] ?? 0,
+      isLiked: true,
+    )),
+  ],
+),
+
     );
   }
 
