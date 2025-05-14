@@ -4,26 +4,31 @@ class Neo4jRepository extends BaseRepository {
     async createConnection(senderId, receiverId, status = 'pending') {
         const query = `
             MATCH (sender:User {id_user: $senderId}), (receiver:User {id_user: $receiverId})
-            CREATE (sender)-[r:CONNECTION {status: $status, createdAt: datetime()}]->(receiver)
+            CREATE (sender)-[r:REQUESTED {status: $status, createdAt: datetime()}]->(receiver)
             RETURN r`;
-
+    
         const records = await this.executeQuery(query, { senderId, receiverId, status });
         return records.length > 0;
     }
-
+    
     async updateConnectionStatus(senderId, receiverId, status) {
-        const query = `
-            MATCH (sender:User {id_user: $senderId})-[r:CONNECTION]->(receiver:User {id_user: $receiverId})
+        const query = status === 'accepted' ? `
+            MATCH (sender:User {id_user: $senderId})-[r:REQUESTED]->(receiver:User {id_user: $receiverId})
+            DELETE r
+            CREATE (sender)-[c:CONNECTION {status: $status, createdAt: datetime()}]->(receiver)
+            RETURN c as r` : `
+            MATCH (sender:User {id_user: $senderId})-[r:REQUESTED]->(receiver:User {id_user: $receiverId})
             SET r.status = $status, r.updatedAt = datetime()
             RETURN r`;
-
+    
         const records = await this.executeQuery(query, { senderId, receiverId, status });
         return records.length > 0;
     }
-
+    
     async getConnections(userId, status = null) {
+        const relationshipType = status === 'accepted' ? 'CONNECTION' : 'REQUESTED';
         const query = status ?
-            `MATCH (u:User {id_user: $userId})<-[r:CONNECTION {status: $status}]-(other:User)
+            `MATCH (u:User {id_user: $userId})<-[r:${relationshipType} {status: $status}]-(other:User)
             RETURN other.id_user as id,
                    other.email as email,
                    other.firstName as firstName,
@@ -35,7 +40,7 @@ class Neo4jRepository extends BaseRepository {
                    r.status as status,
                    r.createdAt as sentAt
             ORDER BY r.createdAt DESC` :
-            `MATCH (u:User {id_user: $userId})<-[r:CONNECTION]-(other:User)
+            `MATCH (u:User {id_user: $userId})<-[r:REQUESTED|CONNECTION]-(other:User)
             RETURN other.id_user as id,
                    other.email as email,
                    other.firstName as firstName,

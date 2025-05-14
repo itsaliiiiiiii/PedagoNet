@@ -9,7 +9,7 @@ router.post('/request', authenticateToken, async (req, res) => {
         const { receiverId } = req.body;
 
         // Check if connection already exists
-        const existingConnections = await getConnections(req.user._id.toString());
+        const existingConnections = await getConnections(req.user.id_user.toString());
         if (existingConnections.some(conn => conn.userId === receiverId)) {
             return res.status(400).json({
                 success: false,
@@ -17,7 +17,7 @@ router.post('/request', authenticateToken, async (req, res) => {
             });
         }
 
-        const success = await createConnection(req.user._id.toString(), receiverId);
+        const success = await createConnection(req.user.id_user.toString(), receiverId);
         if (!success) {
             return res.status(500).json({ success: false, message: 'Failed to create connection' });
         }
@@ -37,7 +37,7 @@ router.put('/accept/:receiverId', authenticateToken, async (req, res) => {
     try {
         const success = await updateConnectionStatus(
             req.params.receiverId,
-            req.user._id.toString(),
+            req.user.id_user.toString(),
             'accepted'
         );
 
@@ -61,7 +61,7 @@ router.put('/accept/:receiverId', authenticateToken, async (req, res) => {
 // Get user's connections
 router.get('/', authenticateToken, async (req, res) => {
     try {
-        const connections = await getConnections(req.user._id.toString(), 'accepted');
+        const connections = await getConnections(req.user.id_user.toString(), 'accepted');
         res.json({
             success: true,
             connections
@@ -75,7 +75,7 @@ router.get('/', authenticateToken, async (req, res) => {
 // Get pending connection requests
 router.get('/pending', authenticateToken, async (req, res) => {
     try {
-        const pendingConnections = await getConnections(req.user._id.toString(), 'pending');
+        const pendingConnections = await getConnections(req.user.id_user.toString(), 'pending');
         res.json({
             success: true,
             pendingConnections
