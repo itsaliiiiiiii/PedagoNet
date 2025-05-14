@@ -39,7 +39,7 @@ const createPost = async (authorId, content, visibility = 'public', attachments 
     }
 };
 
-const getPosts = async (userId, connectedUserIds, limit = 10, skip = 0) => {
+const getPosts = async (userId, connectedUserIds, limit = 100, skip = 0) => {
     try {
         const results = await postRepository.getPosts(userId, connectedUserIds, limit, skip);
         const posts = results.map(({ post, author }) => ({

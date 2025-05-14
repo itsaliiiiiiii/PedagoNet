@@ -53,7 +53,7 @@ class PostRepository extends BaseRepository {
     }
 
     // In getPosts method
-    async getPosts(userId, connectedUserIds, limit = 10, skip = 0) {
+    async getPosts(userId, connectedUserIds, limit = 100, skip = 0) {
         const query = `
             MATCH (author:User)-[:AUTHORED]->(p:Post)
             WHERE (p.visibility = 'public' 

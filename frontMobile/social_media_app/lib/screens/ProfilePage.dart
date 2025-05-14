@@ -606,6 +606,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 ],
               ),
               child: Post(
+                token: widget.token,
+                  postId: post?['id'],
                   name: post?['author']?['firstName'] ?? 'Nom inconnu',
                   role: 'Student',
                   time: post?['createdAt']?['year']?['low'].toString() ??

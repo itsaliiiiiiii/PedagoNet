@@ -1,10 +1,15 @@
+import 'dart:convert';
 import 'dart:ffi';
 
 import 'package:flutter/material.dart';
+import 'package:social_media_app/core/Api.dart';
 import 'package:social_media_app/models/PostModel.dart';
 import 'package:social_media_app/screens/PostDetails.dart';
+import 'package:http/http.dart' as http;
 
 class Post extends StatefulWidget {
+  final String token;
+  final String postId;
   final String name;
   final String role;
   final String time;
@@ -15,6 +20,8 @@ class Post extends StatefulWidget {
 
   const Post(
       {super.key,
+      required this.token,
+      required this.postId,
       required this.name,
       required this.role,
       required this.time,
@@ -38,11 +45,37 @@ class _PostState extends State<Post> {
     _iconColor = _isLiked ? Colors.blue : Colors.grey;
   }
 
+  Future<void> _sendLikeRequest() async {
+    final url = Uri.parse('${Api.baseUrl}/posts/${widget.postId}/like');
+    final token = widget.token;
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        print('Success: ${responseData['liked']}');
+
+        setState(() {
+          _isLiked = responseData['liked'];
+          _iconColor = _isLiked ? Colors.blue : Colors.grey;
+        });
+      } else {
+        print('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Exception: $e');
+    }
+  }
+
   void _toggleColor() {
-    setState(() {
-      _isLiked = !_isLiked;
-      _iconColor = _isLiked ? Colors.blue : Colors.grey;
-    });
+    _sendLikeRequest();
   }
 
   void _DetailsPage() {
