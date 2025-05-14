@@ -58,8 +58,8 @@ export default function DesktopNav() {
             <NavButton 
               icon={<Users />} 
               label="Réseau" 
-              href="/network" 
-              active={pathname === '/network'} 
+              href="/network/requests" 
+              active={pathname === '/network/requests' } 
             />
             <NavButton 
               icon={<MessagesSquare />} 
