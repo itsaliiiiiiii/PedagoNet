@@ -1,7 +1,6 @@
 const express = require('express');
 const { connectDatabase } = require('./src/config/database');
 const { connectMongoDB } = require('./src/config/mongodb');
-const { initializeDatabase } = require('./src/config/database-init');
 const authRoutes = require('./src/routes/auth.routes');
 const classroomRoutes = require('./src/routes/classroom.routes');
 const connectionRoutes = require('./src/routes/connection.routes');
@@ -23,8 +22,6 @@ app.use(cookieParser());
 connectDatabase();
 connectMongoDB();
 
-// Initialize database indexes and constraints
-initializeDatabase().catch(console.error);
 
 // CORS middleware
 app.use((req, res, next) => {

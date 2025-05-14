@@ -3,6 +3,7 @@ const neo4j = require('neo4j-driver');
 
 class PostRepository extends BaseRepository {
     async createPost(authorId, content, visibility, attachments) {
+        // Remove the parsing here as attachments are already objects
         const query = `
             MATCH (author:User {id_user: $authorId})
             CREATE (p:Post {
@@ -13,7 +14,7 @@ class PostRepository extends BaseRepository {
                 updatedAt: datetime()
             })
             CREATE (author)-[:AUTHORED]->(p)
-            WITH p
+            WITH p, author
             UNWIND $attachments AS attachment
             CREATE (a:Attachment {
                 id: randomUUID(),
@@ -25,27 +26,27 @@ class PostRepository extends BaseRepository {
             })
             CREATE (p)-[:HAS_ATTACHMENT]->(a)
             RETURN p, author`;
-
+    
         const records = await this.executeQuery(query, { 
             authorId, 
             content, 
             visibility, 
-            attachments 
+            attachments  // Pass attachments directly
         });
-
+    
         if (records.length === 0) return null;
-
+    
         const post = records[0].get('p').properties;
         const author = records[0].get('author').properties;
-
+    
         // Get attachments
         const attachmentsQuery = `
             MATCH (p:Post {id: $postId})-[:HAS_ATTACHMENT]->(a:Attachment)
             RETURN a`;
-
+    
         const attachmentRecords = await this.executeQuery(attachmentsQuery, { postId: post.id });
         const postAttachments = attachmentRecords.map(record => record.get('a').properties);
-
+    
         return { 
             post: { ...post, attachments: postAttachments },
             author 
