@@ -38,7 +38,7 @@ const getPosts = async (userId, connectedUserIds, limit = 10, skip = 0) => {
         const results = await postRepository.getPosts(userId, connectedUserIds, limit, skip);
         const posts = results.map(({ post, author }) => ({
             ...post,
-            attachments: post.attachments ? post.attachments.map(att => JSON.parse(att)) : [],
+            attachments: post.attachments || [], // No need to parse, they're already objects
             author: formatAuthor(author)
         }));
 
