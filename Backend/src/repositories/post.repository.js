@@ -348,36 +348,59 @@ class PostRepository extends BaseRepository {
 
     async toggleLike(postId, userId) {
         const query = `
-            MATCH (user:User {id_user: $userId}), (post:Post {id: $postId})
+            MATCH (user:User {id_user: $userId}), (post:Post {id_post: $postId})
             OPTIONAL MATCH (user)-[like:LIKE]->(post)
             WITH user, post, like
-            CALL apoc.do.when(
-                like IS NULL,
-                'CREATE (user)-[:LIKE]->(post) RETURN true as liked',
-                'DELETE like RETURN false as liked',
-                {user: user, post: post, like: like}
-            ) YIELD value
-            RETURN value.liked as liked`;
-
+            FOREACH (x IN CASE 
+                WHEN like IS NULL THEN [1] 
+                ELSE [] 
+                END | 
+                CREATE (user)-[:LIKE {createdAt: datetime()}]->(post)
+            )
+            FOREACH (x IN CASE 
+                WHEN like IS NOT NULL THEN [1] 
+                ELSE [] 
+                END | 
+                DELETE like
+            )
+            RETURN CASE 
+                WHEN like IS NULL THEN true 
+                ELSE false 
+                END as liked`;
+    
         const records = await this.executeQuery(query, { postId, userId });
-        return { liked: records[0].get('liked') };
+        
+        if (!records || records.length === 0) {
+            return { liked: false };
+        }
+    
+        return {
+            liked: records[0].get('liked')
+        };
     }
 
     async getPostLikedUsers(postId, limit = 10, skip = 0) {
         const query = `
-            MATCH (user:User)-[:LIKE]->(post:Post {id: $postId})
-            RETURN user
+            MATCH (user:User)-[:LIKE]->(post:Post {id_post: $postId})
+            WITH user
             ORDER BY user.firstName
             SKIP $skip
-            LIMIT $limit`;
-
+            LIMIT $limit
+            RETURN COLLECT({
+                id_user: user.id_user,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                profilePhoto: user.profilePhoto
+            }) as users`;
+    
         const records = await this.executeQuery(query, {
             postId,
             skip: neo4j.int(skip),
             limit: neo4j.int(limit)
         });
-
-        return records.map(record => record.get('user').properties);
+    
+        return records[0].get('users');
     }
 }
 
