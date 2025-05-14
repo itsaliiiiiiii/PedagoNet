@@ -381,19 +381,26 @@ class PostRepository extends BaseRepository {
 
     async getPostLikedUsers(postId, limit = 10, skip = 0) {
         const query = `
-            MATCH (user:User)-[:LIKE]->(post:Post {id: $postId})
-            RETURN user
+            MATCH (user:User)-[:LIKE]->(post:Post {id_post: $postId})
+            WITH user
             ORDER BY user.firstName
             SKIP $skip
-            LIMIT $limit`;
-
+            LIMIT $limit
+            RETURN COLLECT({
+                id_user: user.id_user,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                profilePhoto: user.profilePhoto
+            }) as users`;
+    
         const records = await this.executeQuery(query, {
             postId,
             skip: neo4j.int(skip),
             limit: neo4j.int(limit)
         });
-
-        return records.map(record => record.get('user').properties);
+    
+        return records[0].get('users');
     }
 }
 
