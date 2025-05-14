@@ -12,14 +12,8 @@ const formatAuthor = (author) => ({
 
 const createPost = async (authorId, content, visibility = 'public', attachments = []) => {
     try {
-        const attachmentStrings = attachments.map(attachment => JSON.stringify({
-            filename: attachment.filename,
-            originalName: attachment.originalName,
-            mimetype: attachment.mimetype,
-            size: attachment.size
-        }));
-
-        const result = await postRepository.createPost(authorId, content, visibility, attachmentStrings);
+        // Attachments are already in the correct format from multer
+        const result = await postRepository.createPost(authorId, content, visibility, attachments);
         if (!result) {
             return { success: false, message: 'Failed to create post' };
         }
@@ -29,7 +23,7 @@ const createPost = async (authorId, content, visibility = 'public', attachments 
             success: true,
             post: {
                 ...post,
-                attachments: post.attachments.map(att => JSON.parse(att)),
+                attachments: post.attachments, // No need to parse
                 author: formatAuthor(author)
             }
         };
@@ -44,7 +38,7 @@ const getPosts = async (userId, connectedUserIds, limit = 100, skip = 0) => {
         const results = await postRepository.getPosts(userId, connectedUserIds, limit, skip);
         const posts = results.map(({ post, author }) => ({
             ...post,
-            attachments: post.attachments ? post.attachments.map(att => JSON.parse(att)) : [],
+            attachments: post.attachments || [], // No need to parse, they're already objects
             author: formatAuthor(author)
         }));
 
