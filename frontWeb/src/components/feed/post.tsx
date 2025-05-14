@@ -2,7 +2,19 @@
 
 import type React from "react"
 import { useState, useRef, useEffect } from "react"
-import { ThumbsUp, MessageCircle, Share2, MoreHorizontal, Send, Heart } from "lucide-react"
+import {ThumbsUp,
+  MessageCircle,
+  Share2,
+  MoreHorizontal,
+  Send,
+  Lock,
+  Users,
+  Globe,
+  Heart,
+  Play,
+  ImageIcon,
+  Download,
+  ExternalLink,} from "lucide-react"
 
 interface CommentType {
   id: string
@@ -15,19 +27,30 @@ interface CommentType {
 }
 
 interface PostProps {
-  avatar: React.ReactNode
+ avatar: React.ReactNode
   avatarBg?: string
   name: string
   title: string
   time: string
   content: string
+  images?: string[]
+  video?: {
+    url: string
+    thumbnail?: string
+  }
+  document?: {
+    url: string
+    name: string
+    type: string
+    size: number
+  }
   image?: string
   imageAlt?: string
   likes: number
   comments: number
   isLiked?: boolean
   commentsList?: CommentType[]
-}
+  visibility?: "public" | "friends" | "private"}
 
 const Post: React.FC<PostProps> = ({
   avatar,
@@ -36,18 +59,30 @@ const Post: React.FC<PostProps> = ({
   title,
   time,
   content,
+  images,
+  video,
+  document,
   image,
   imageAlt = "Image du post",
   likes,
   comments,
   isLiked = false,
   commentsList = [],
+  visibility = "public",
 }) => {
   const [showComments, setShowComments] = useState(false)
   const [visibleComments, setVisibleComments] = useState(3)
   const [newComment, setNewComment] = useState("")
   const [focusedInput, setFocusedInput] = useState(false)
   const commentSectionRef = useRef<HTMLDivElement>(null)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  const imagesArray = images || (image ? [image] : undefined)
+
+  // Determine media type
+  const mediaType = imagesArray ? "images" : video ? "video" : document ? "document" : null
 
   // Default comments if none provided
   const defaultComments: CommentType[] = [
@@ -118,6 +153,62 @@ const Post: React.FC<PostProps> = ({
       setNewComment("")
     }
   }
+  const nextImage = () => {
+    if (imagesArray && imagesArray.length > 1) {
+      setCurrentImageIndex((prev) => (prev + 1) % imagesArray.length)
+    }
+  }
+
+  const prevImage = () => {
+    if (imagesArray && imagesArray.length > 1) {
+      setCurrentImageIndex((prev) => (prev === 0 ? imagesArray.length - 1 : prev - 1))
+    }
+  }
+
+  // Handle video play/pause
+  const toggleVideo = () => {
+    if (videoRef.current) {
+      if (isVideoPlaying) {
+        videoRef.current.pause()
+      } else {
+        videoRef.current.play()
+      }
+      setIsVideoPlaying(!isVideoPlaying)
+    }
+  }
+
+  // Format file size
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return bytes + " B"
+    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB"
+    else if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + " MB"
+    else return (bytes / 1073741824).toFixed(1) + " GB"
+  }
+
+  // Get file icon based on type
+  const getFileIcon = (fileType: string) => {
+    if (fileType.includes("pdf")) return "📄"
+    if (fileType.includes("doc")) return "📝"
+    if (fileType.includes("xls")) return "📊"
+    if (fileType.includes("ppt")) return "📑"
+    if (fileType.includes("zip") || fileType.includes("rar")) return "🗜️"
+    return "📁"
+  }
+
+  // Get visibility text and icon
+  const getVisibilityInfo = () => {
+    switch (visibility) {
+      case "friends":
+        return { text: "Visible par les amis", icon: <Users className="h-3 w-3 text-blue-500" /> }
+      case "private":
+        return { text: "Visible uniquement par vous", icon: <Lock className="h-3 w-3 text-purple-500" /> }
+      default:
+        return { text: "Visible par tous", icon: <Globe className="h-3 w-3 text-green-500" /> }
+    }
+  }
+
+  const visibilityInfo = getVisibilityInfo()
+
 
   // Scroll to new comments when they're loaded
   useEffect(() => {
@@ -131,6 +222,24 @@ const Post: React.FC<PostProps> = ({
       }, 100)
     }
   }, [visibleComments, showComments])
+  useEffect(() => {
+    const videoElement = videoRef.current
+    if (videoElement) {
+      const handlePlay = () => setIsVideoPlaying(true)
+      const handlePause = () => setIsVideoPlaying(false)
+      const handleEnded = () => setIsVideoPlaying(false)
+
+      videoElement.addEventListener("play", handlePlay)
+      videoElement.addEventListener("pause", handlePause)
+      videoElement.addEventListener("ended", handleEnded)
+
+      return () => {
+        videoElement.removeEventListener("play", handlePlay)
+        videoElement.removeEventListener("pause", handlePause)
+        videoElement.removeEventListener("ended", handleEnded)
+      }
+    }
+  }, [])
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200/80 dark:border-gray-700/80 overflow-hidden transition-all duration-300 hover:shadow-lg">
@@ -159,9 +268,165 @@ const Post: React.FC<PostProps> = ({
             <div className="mt-3.5">
               <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">{content}</p>
             </div>
-            {image && (
+            {/* {image && (
               <div className="mt-4 rounded-xl overflow-hidden border border-gray-200/80 dark:border-gray-700/80 shadow-sm">
                 <img src={image || "/default-placeholder.png"} alt={imageAlt} className="w-full h-auto object-cover" />
+              </div>
+            )} */}
+            {mediaType && (
+              <div className="mt-4">
+                {/* Multiple images */}
+                {mediaType === "images" && imagesArray && (
+                  <div className="relative rounded-xl overflow-hidden border border-gray-200/80 dark:border-gray-700/80 shadow-sm">
+                    <img
+                      src={imagesArray[currentImageIndex] || "/default-placeholder.png"}
+                      alt={`${imageAlt} ${currentImageIndex + 1}`}
+                      className="w-full h-auto object-contain max-h-[500px]"
+                    />
+
+                    {/* Image navigation for multiple images */}
+                    {imagesArray.length > 1 && (
+                      <>
+                        {/* Navigation buttons */}
+                        <button
+                          onClick={prevImage}
+                          className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all duration-200"
+                          aria-label="Image précédente"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M15 18l-6-6 6-6" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={nextImage}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all duration-200"
+                          aria-label="Image suivante"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M9 18l6-6-6-6" />
+                          </svg>
+                        </button>
+
+                        {/* Image counter */}
+                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/60 text-white text-xs px-2.5 py-1 rounded-full">
+                          {currentImageIndex + 1} / {imagesArray.length}
+                        </div>
+
+                        {/* Image thumbnails */}
+                        {imagesArray.length > 1 && (
+                          <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-1.5 p-2 bg-gradient-to-t from-black/50 to-transparent">
+                            {imagesArray.map((img, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() => setCurrentImageIndex(idx)}
+                                className={`h-1.5 rounded-full transition-all duration-200 ${
+                                  idx === currentImageIndex ? "w-6 bg-white" : "w-3 bg-white/60 hover:bg-white/80"
+                                }`}
+                                aria-label={`Aller à l'image ${idx + 1}`}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* Video */}
+                {mediaType === "video" && video && (
+                  <div className="relative rounded-xl overflow-hidden border border-gray-200/80 dark:border-gray-700/80 shadow-sm">
+                    {!isVideoPlaying && video.thumbnail && (
+                      <div className="absolute inset-0 bg-black">
+                        <img
+                          src={video.thumbnail || "/placeholder.svg"}
+                          alt="Miniature vidéo"
+                          className="w-full h-full object-cover opacity-80"
+                        />
+                      </div>
+                    )}
+
+                    <video
+                      ref={videoRef}
+                      src={video.url}
+                      className="w-full max-h-[500px]"
+                      controls={isVideoPlaying}
+                      poster={video.thumbnail}
+                    />
+
+                    {!isVideoPlaying && (
+                      <button
+                        onClick={toggleVideo}
+                        className="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/40 transition-all duration-200 group"
+                        aria-label="Lire la vidéo"
+                      >
+                        <div className="h-16 w-16 rounded-full bg-white/20 group-hover:bg-white/30 flex items-center justify-center backdrop-blur-sm transition-all duration-200 group-hover:scale-110">
+                          <Play className="h-8 w-8 text-white fill-white" />
+                        </div>
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Document */}
+                {mediaType === "document" && document && (
+                  <div className="rounded-xl border border-gray-200/80 dark:border-gray-700/80 shadow-sm overflow-hidden">
+                    <div className="bg-gray-50 dark:bg-gray-700/50 p-4 flex items-center gap-4">
+                      <div className="h-12 w-12 rounded-lg bg-white dark:bg-gray-700 flex items-center justify-center text-2xl shadow-sm border border-gray-200 dark:border-gray-600">
+                        {getFileIcon(document.type)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-gray-900 dark:text-white text-sm truncate">{document.name}</h4>
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {document.type.split("/")[1]?.toUpperCase() || document.type}
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {formatFileSize(document.size)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <a
+                          href={document.url}
+                          download={document.name}
+                          className="p-2 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors duration-200"
+                          aria-label="Télécharger"
+                        >
+                          <Download className="h-5 w-5" />
+                        </a>
+                        <a
+                          href={document.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 rounded-full bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-200"
+                          aria-label="Ouvrir"
+                        >
+                          <ExternalLink className="h-5 w-5" />
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
