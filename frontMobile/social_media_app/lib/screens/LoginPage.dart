@@ -17,7 +17,7 @@ class LoginPage extends StatelessWidget {
         'x-client-type': 'mobile',
       },
       body: json.encode({
-        'email': 'test.student2@test.com',
+        'email': 'test.student@test.com',
         'password': 'test123',
       }),
     );

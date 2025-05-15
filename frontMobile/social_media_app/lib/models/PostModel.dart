@@ -1,4 +1,5 @@
 class PostModel {
+  final String postId;
   final String name;
   final String role;
   final String time;
@@ -8,6 +9,7 @@ class PostModel {
   final bool isLiked;
 
   PostModel({
+    required this.postId,
     required this.name,
     required this.role,
     required this.time,

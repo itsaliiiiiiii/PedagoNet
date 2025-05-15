@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:social_media_app/core/Api.dart';
 import 'package:social_media_app/models/PostModel.dart';
 import 'package:social_media_app/widgets/deatilsPostPage/Comment.dart';
+import 'package:http/http.dart' as http;
 
 class PostDetails extends StatefulWidget {
   final PostModel post;
@@ -12,26 +14,26 @@ class PostDetails extends StatefulWidget {
 }
 
 class _PostDetailsState extends State<PostDetails> {
-  final List<Map<String, String>> comments = [
-    {
-      "userName": "Aya ElMansouri",
-      "role": "Étudiante",
-      "time": "il y a 5 min",
-      "comment": "Super intéressant ce post !"
-    },
-    {
-      "userName": "Youssef Bakkali",
-      "role": "Professeur",
-      "time": "il y a 10 min",
-      "comment": "Merci pour le partage !"
-    },
-    {
-      "userName": "Sara Lahrichi",
-      "role": "Étudiante",
-      "time": "il y a 20 min",
-      "comment": "Je suis d'accord avec toi !"
-    },
-  ];
+  final List<Map<String, String>> comments = [];
+  //   {
+  //     "userName": "Aya ElMansouri",
+  //     "role": "Étudiante",
+  //     "time": "il y a 5 min",
+  //     "comment": "Super intéressant ce post !"
+  //   },
+  //   {
+  //     "userName": "Youssef Bakkali",
+  //     "role": "Professeur",
+  //     "time": "il y a 10 min",
+  //     "comment": "Merci pour le partage !"
+  //   },
+  //   {
+  //     "userName": "Sara Lahrichi",
+  //     "role": "Étudiante",
+  //     "time": "il y a 20 min",
+  //     "comment": "Je suis d'accord avec toi !"
+  //   },
+  // ];
 
   TextEditingController controller = TextEditingController();
 
@@ -49,6 +51,14 @@ class _PostDetailsState extends State<PostDetails> {
     setState(() {
       _isLiked = !_isLiked;
       _iconColor = _isLiked ? Colors.blue : Colors.grey;
+    });
+  }
+
+  Future<dynamic> fetchComments() async {
+    String url = "${Api.baseUrl}/posts/${widget.post.postId}/comments";
+
+    dynamic result = http.get(Uri.parse(url),headers: {
+      'Authorization':'Bearer',
     });
   }
 
@@ -141,8 +151,13 @@ class _PostDetailsState extends State<PostDetails> {
                         ],
                       ),
                     ),
-                    SizedBox(height: 5,),
-                    Divider(height: 10,thickness: 0.5,),
+                    SizedBox(
+                      height: 5,
+                    ),
+                    Divider(
+                      height: 10,
+                      thickness: 0.5,
+                    ),
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 20),
                       child: Row(
@@ -160,9 +175,7 @@ class _PostDetailsState extends State<PostDetails> {
                             ),
                           ),
                           TextButton.icon(
-                            onPressed: (){
-
-                            },
+                            onPressed: () {},
                             icon: Icon(
                               Icons.comment,
                               color: Colors.grey,
@@ -175,7 +188,9 @@ class _PostDetailsState extends State<PostDetails> {
                         ],
                       ),
                     ),
-                    SizedBox(height: 15,),
+                    SizedBox(
+                      height: 15,
+                    ),
                     Text("Réactions"),
                     SizedBox(
                       height: 60,

@@ -14,7 +14,7 @@ class Post extends StatefulWidget {
   final String role;
   final String time;
   final String? description;
-  final String? imageUrl;
+  final String? filename;
   final int likes;
   final bool isLiked;
 
@@ -26,7 +26,7 @@ class Post extends StatefulWidget {
       required this.role,
       required this.time,
       this.description,
-      this.imageUrl,
+      this.filename,
       required this.likes,
       required this.isLiked});
 
@@ -78,13 +78,45 @@ class _PostState extends State<Post> {
     _sendLikeRequest();
   }
 
+  Widget buildImage() {
+    print('Filename: ${widget.filename}'); 
+
+    if (widget.filename != null && widget.filename!.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          '${Api.baseUrl}/uploads/${widget.filename!}',
+          width: double.infinity,
+          fit: BoxFit.cover,
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Center(
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded /
+                        loadingProgress.expectedTotalBytes!
+                    : null,
+              ),
+            );
+          },
+          errorBuilder: (context, error, stackTrace) =>
+              Icon(Icons.broken_image, size: 100, color: Colors.grey),
+        ),
+      );
+    } else {
+      print('No filename or empty filename'); // Pour debug aussi
+      return SizedBox.shrink();
+    }
+  }
+
   void _DetailsPage() {
     PostModel post = PostModel(
+      postId: widget.postId,
       name: widget.name,
       role: widget.role,
       time: widget.time,
       description: widget.description,
-      imageUrl: widget.imageUrl,
+      imageUrl: widget.filename,
       likes: widget.likes,
       isLiked: widget.isLiked,
     );
@@ -151,7 +183,7 @@ class _PostState extends State<Post> {
             // padding: EdgeInsets.all(10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+              children: <Widget>[
                 if (widget.description != null &&
                     widget.description!.isNotEmpty) ...[
                   Text(
@@ -159,24 +191,7 @@ class _PostState extends State<Post> {
                   ),
                   SizedBox(height: 16),
                 ],
-                if (widget.imageUrl != null && widget.imageUrl!.isNotEmpty)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      widget.imageUrl!,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                if (widget.imageUrl != null && widget.imageUrl!.isNotEmpty) ...[
-                  SizedBox(
-                    height: 20,
-                  )
-                ] else ...[
-                  SizedBox(
-                    height: 2,
-                  )
-                ],
+                buildImage(),
                 Container(
                   padding: EdgeInsets.only(left: 10),
                   child: Row(

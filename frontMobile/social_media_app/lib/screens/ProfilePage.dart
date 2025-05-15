@@ -199,21 +199,21 @@ class _ProfilePageState extends State<ProfilePage> {
           Container(
             width: double.infinity,
             height: 150,
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: NetworkImage(
-                  'https://media.licdn.com/dms/image/v2/D4D16AQE-BpAZSleNiQ/profile-displaybackgroundimage-shrink_350_1400/profile-displaybackgroundimage-shrink_350_1400/0/1738106643918?e=1750291200&v=beta&t=yVCaIgS0STCYTViksTxb3GC1Wtl-hXkBaqGksXq5bVo',
-                ),
-                fit: BoxFit.cover,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 10,
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
+            // decoration: BoxDecoration(
+            //   image: DecorationImage(
+            //     image: NetworkImage(
+            //       'https://media.licdn.com/dms/image/v2/D4D16AQE-BpAZSleNiQ/profile-displaybackgroundimage-shrink_350_1400/profile-displaybackgroundimage-shrink_350_1400/0/1738106643918?e=1750291200&v=beta&t=yVCaIgS0STCYTViksTxb3GC1Wtl-hXkBaqGksXq5bVo',
+            //     ),
+            //     fit: BoxFit.cover,
+            //   ),
+            //   boxShadow: [
+            //     BoxShadow(
+            //       color: Colors.black.withOpacity(0.2),
+            //       blurRadius: 10,
+            //       spreadRadius: 2,
+            //     ),
+            //   ],
+            // ),
             child: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -249,14 +249,15 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: CircleAvatar(
                   radius: 62,
                   backgroundColor: Colors.white,
-                  child: ClipOval(
-                    child: Image.network(
-                      'https://media.licdn.com/dms/image/v2/D4D22AQGStRRs6la14g/feedshare-shrink_800/B4DZYXfK8nG4Ag-/0/1744150772065?e=1747267200&v=beta&t=EoR1gz6Usd0RayI-AzPJ93aaxIGoPjYg7RYt0RZMDM0',
-                      fit: BoxFit.cover,
-                      width: 124,
-                      height: 124,
-                    ),
-                  ),
+                  child: CircleAvatar(child:Icon(Icons.person)),
+                  // child: ClipOval(
+                  //   child: Image.network(
+                  //     'https://media.licdn.com/dms/image/v2/D4D22AQGStRRs6la14g/feedshare-shrink_800/B4DZYXfK8nG4Ag-/0/1744150772065?e=1747267200&v=beta&t=EoR1gz6Usd0RayI-AzPJ93aaxIGoPjYg7RYt0RZMDM0',
+                  //     fit: BoxFit.cover,
+                  //     width: 124,
+                  //     height: 124,
+                  //   ),
+                  // ),
                 ),
               ),
             ),
@@ -612,8 +613,8 @@ class _ProfilePageState extends State<ProfilePage> {
                   role: 'Student',
                   time: post?['createdAt']?['year']?['low'].toString() ??
                       'inconnu',
-                  description: post?['description'],
-                  imageUrl: post?['imageUrl'],
+                  description: post?['content'],
+                // filename: post['attachments'][0]['filename'],
                   likes: post?['likes'] ?? 0,
                   isLiked: true),
             );

@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-// import 'package:image_picker/image_picker.dart';
-// import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:social_media_app/core/Api.dart';
 
@@ -16,33 +15,53 @@ class CreatePostPage extends StatefulWidget {
 
 class _CreatePostPageState extends State<CreatePostPage> {
   final TextEditingController _postController = TextEditingController();
-  final List<File> _selectedImages = [];
-  final List<File> _selectedDocs = [];
+  File? _selectedImage;
   bool _isLoading = false;
 
   Future<void> _pickImage() async {
-    // final ImagePicker picker = ImagePicker();
-    // final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-    
-    // if (image != null) {
-    //   setState(() {
-    //     _selectedImages.add(File(image.path));
-    //   });
-    // }
+    try {
+      final ImagePicker picker = ImagePicker();
+
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+      );
+
+      if (image != null) {
+        setState(() {
+          _selectedImage = File(image.path);
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur lors de la sélection de l\'image: $e')),
+      );
+    }
   }
 
-  Future<void> _pickDocument() async {
-    //FilePickerResult? result = await FilePicker.platform.pickFiles();
-    
-    // if (result != null) {
-    //   setState(() {
-    //     _selectedDocs.add(File(result.files.single.path!));
-    //   });
-    // }
+  Future<void> _takePicture() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+
+      final XFile? photo = await picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 80,
+      );
+
+      if (photo != null) {
+        setState(() {
+          _selectedImage = File(photo.path);
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur lors de la prise de photo: $e')),
+      );
+    }
   }
 
   Future<void> _createPost() async {
-    if (_postController.text.isEmpty && _selectedImages.isEmpty) {
+    if (_postController.text.isEmpty && _selectedImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Veuillez ajouter du texte ou une image')),
       );
@@ -54,41 +73,31 @@ class _CreatePostPageState extends State<CreatePostPage> {
     });
 
     try {
-      // Créer un multipart request pour envoyer des fichiers
+      
       var request = http.MultipartRequest(
         'POST',
         Uri.parse('${Api.baseUrl}/posts'),
       );
 
-      // Ajouter le token d'authentification
       request.headers.addAll({
         'Authorization': 'Bearer ${widget.token}',
       });
 
-      // Ajouter le texte du post
-      request.fields['description'] = _postController.text;
+      request.fields['content'] = _postController.text;
+      request.fields['visibility'] = 'public';
 
-      // Ajouter les images
-      for (var i = 0; i < _selectedImages.length; i++) {
+
+      // Ajouter l'image si elle existe
+      if (_selectedImage != null) {
         var file = await http.MultipartFile.fromPath(
-          'images',
-          _selectedImages[i].path,
+          'attachments', 
+          _selectedImage!.path,
         );
         request.files.add(file);
       }
 
-      // Ajouter les documents
-      for (var i = 0; i < _selectedDocs.length; i++) {
-        var file = await http.MultipartFile.fromPath(
-          'documents',
-          _selectedDocs[i].path,
-        );
-        request.files.add(file);
-      }
-
-      // Envoyer la requête
       var response = await request.send();
-      
+
       if (response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Publication créée avec succès')),
@@ -96,7 +105,8 @@ class _CreatePostPageState extends State<CreatePostPage> {
         Navigator.pop(context, true); // Retourner true pour indiquer le succès
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Erreur lors de la création de la publication')),
+          const SnackBar(
+              content: Text('Erreur lors de la création de la publication')),
         );
       }
     } catch (e) {
@@ -117,140 +127,132 @@ class _CreatePostPageState extends State<CreatePostPage> {
       appBar: AppBar(
         title: const Text('Créer une publication'),
         backgroundColor: Colors.white,
-        //foregroundColor: Colors.white,
         actions: [
           TextButton(
             onPressed: _isLoading ? null : _createPost,
-            child: _isLoading 
-              ? const CircularProgressIndicator(color: Colors.white)
-              : const Text('Publier', style: TextStyle(color: Colors.white)),
+            child: _isLoading
+                ? const CircularProgressIndicator(color: Colors.blue)
+                : const Text('Publier', style: TextStyle(color: Colors.blue)),
           ),
         ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
-
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TextField(
               controller: _postController,
-              maxLines: 8,
+              maxLines: 5,
               decoration: const InputDecoration(
                 hintText: 'Quoi de neuf?',
                 border: InputBorder.none,
               ),
             ),
-            if (_selectedImages.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              const Text(
-                'Images',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 100,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _selectedImages.length,
-                  itemBuilder: (context, index) {
-                    return Stack(
-                      children: [
-                        Container(
-                          margin: const EdgeInsets.only(right: 8),
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            image: DecorationImage(
-                              image: FileImage(_selectedImages[index]),
-                              fit: BoxFit.cover,
-                            ),
+            const SizedBox(height: 16),
+            if (_selectedImage != null) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Stack(
+                  children: [
+                    Image.file(
+                      _selectedImage!,
+                      width: double.infinity,
+                      height: 300,
+                      fit: BoxFit.cover,
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedImage = null;
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.black54,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.close,
+                            size: 20,
+                            color: Colors.white,
                           ),
                         ),
-                        Positioned(
-                          top: 0,
-                          right: 8,
-                          child: GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _selectedImages.removeAt(index);
-                              });
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: const BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.close,
-                                size: 16,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-            if (_selectedDocs.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              const Text(
-                'Documents',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _selectedDocs.length,
-                itemBuilder: (context, index) {
-                  final fileName = _selectedDocs[index].path.split('/').last;
-                  return ListTile(
-                    leading: const Icon(Icons.insert_drive_file),
-                    title: Text(fileName),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () {
-                        setState(() {
-                          _selectedDocs.removeAt(index);
-                        });
-                      },
-                    ),
-                  );
-                },
+            ] else ...[
+              // Afficher une zone pour ajouter une image
+              GestureDetector(
+                onTap: _showImageSourceOptions,
+                child: Container(
+                  width: double.infinity,
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(
+                        Icons.add_photo_alternate,
+                        size: 50,
+                        color: Colors.grey,
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Ajouter une image',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ],
         ),
       ),
-      bottomNavigationBar: BottomAppBar(
-        color: Colors.white,
-  child: Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.end, // Aligne à droite
-      children: [
-        IconButton(
-          icon: const Icon(Icons.photo_library),
-          onPressed: _pickImage,
-          tooltip: 'Ajouter une photo',
-        ),
-        const SizedBox(width: 12), // Espace entre les icônes
-        IconButton(
-          icon: const Icon(Icons.attach_file),
-          onPressed: _pickDocument,
-          tooltip: 'Ajouter un document',
-        ),
-      ],
-    ),
-  ),
-),
+    );
+  }
 
+  void _showImageSourceOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Galerie'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _pickImage();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Appareil photo'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _takePicture();
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

@@ -19,7 +19,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-
   List<Map<String, dynamic>> posts = [];
 
   @override
@@ -36,15 +35,12 @@ class _HomePageState extends State<HomePage> {
     );
 
     if (response.statusCode == 200) {
-      print('response : ${response.body}');
-      // Décoder la réponse JSON
+      // print('response : ${response.body}');
       final Map<String, dynamic> responseData = json.decode(response.body);
 
-      // Extraire la liste des posts
-      final List<dynamic> postData = responseData['posts'];
+      print(responseData);
 
-      // Mettre à jour l'état avec les données des posts
-      print('likesCount: ${postData[0]['likesCount']}');
+      final List<dynamic> postData = responseData['posts'];
 
       setState(() {
         posts = postData.map((post) => post as Map<String, dynamic>).toList();
@@ -165,83 +161,82 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
       body: ListView(
-  padding: const EdgeInsets.all(10),
-  children: [
-    GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => CreatePostPage(token: widget.token),
-          ),
-        ).then((value) {
-          if (value == true) {
-            _fetchPosts();
-          }
-        });
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            const CircleAvatar(
-              backgroundColor: Color.fromARGB(255, 137, 136, 136),
-              radius: 20,
-              child: Icon(
-                Icons.person,
-                size: 30,
-                color: Color.fromARGB(255, 59, 58, 58),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Quoi de neuf?',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 16,
+        padding: const EdgeInsets.all(10),
+        children: [
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CreatePostPage(token: widget.token),
                 ),
+              ).then((value) {
+                if (value == true) {
+                  _fetchPosts();
+                }
+              });
+            },
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 5,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  const CircleAvatar(
+                    backgroundColor: Color.fromARGB(255, 137, 136, 136),
+                    radius: 20,
+                    child: Icon(
+                      Icons.person,
+                      size: 30,
+                      color: Color.fromARGB(255, 59, 58, 58),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Quoi de neuf?',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    Icons.photo_library,
+                    color: Colors.blue[400],
+                  ),
+                  const SizedBox(width: 12),
+                  Icon(
+                    Icons.attach_file,
+                    color: Colors.green[400],
+                  ),
+                ],
               ),
             ),
-            Icon(
-              Icons.photo_library,
-              color: Colors.blue[400],
-            ),
-            const SizedBox(width: 12),
-            Icon(
-              Icons.attach_file,
-              color: Colors.green[400],
-            ),
-          ],
-        ),
+          ),
+          ...posts.map((post) => Post(
+                token: widget.token,
+                postId: post['id'],
+                name: post['author']['firstName']!,
+                role: 'Student',
+                time: post['createdAt']['year']['low'].toString(),
+                description: post['content'],
+                filename: post['attachments'][0]['filename'],
+                likes: post['likesCount'],
+                isLiked: false,
+              )),
+        ],
       ),
-    ),
-    ...posts.map((post) => Post(
-      token: widget.token,
-      postId: post['id'],
-      name: post['author']['firstName']!,
-      role: 'Student',
-      time: post['createdAt']['year']['low'].toString(),
-      description: post['content'],
-      imageUrl: post['imageUrl'],
-      likes: post['likesCount'],
-      isLiked: false,
-    )),
-  ],
-),
-
     );
   }
 
@@ -264,10 +259,11 @@ class _HomePageState extends State<HomePage> {
                   border: Border.all(color: Colors.white, width: 2),
                 ),
                 child: ClipOval(
-                  child: Image.network(
-                    'https://media.licdn.com/dms/image/v2/D5622AQHC6U0LmDdu3g/feedshare-shrink_800/B56ZYqUWeIH0Ak-/0/1744466701049?e=1747267200&v=beta&t=5cVOs_2GPFYZUb42Gl46DPyji4j9gGyxlY660DAEttY',
-                    fit: BoxFit.cover,
-                  ),
+                  child: CircleAvatar(child: Icon(Icons.person),)
+                  // Image.network(
+                  //   'https://media.licdn.com/dms/image/v2/D5622AQHC6U0LmDdu3g/feedshare-shrink_800/B56ZYqUWeIH0Ak-/0/1744466701049?e=1747267200&v=beta&t=5cVOs_2GPFYZUb42Gl46DPyji4j9gGyxlY660DAEttY',
+                  //   fit: BoxFit.cover,
+                  // ),
                 ),
               ),
               const SizedBox(width: 16),
@@ -554,7 +550,7 @@ class _HomePageState extends State<HomePage> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => ProfilePage(token:widget.token),
+                builder: (context) => ProfilePage(token: widget.token),
               ),
             );
           },

@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const { connectDatabase } = require('./src/config/database');
 const { connectMongoDB } = require('./src/config/mongodb');
 const authRoutes = require('./src/routes/auth.routes');
@@ -18,14 +19,16 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(cookieParser());
 
+// Sert les fichiers statiques du dossier "upload"
+app.use('/uploads', express.static(path.join(__dirname, 'upload')));
+
 // Connect to database
 connectDatabase();
 connectMongoDB();
 
-
-// CORS middleware
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
+    // res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
+    res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Credentials', 'true');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
