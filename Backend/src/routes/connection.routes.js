@@ -1,7 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth.middleware');
-const { createConnection, updateConnectionStatus, getConnections } = require('../services/neo4j.service');
+const { 
+    createConnection, 
+    updateConnectionStatus, 
+    getConnections, 
+    refuseConnection,
+    deleteConnection 
+} = require('../services/connection.service');
 
 // Send connection request
 router.post('/request', authenticateToken, async (req, res) => {
@@ -58,6 +64,31 @@ router.put('/accept/:receiverId', authenticateToken, async (req, res) => {
     }
 });
 
+// Refuse connection request
+router.put('/refuse/:senderId', authenticateToken, async (req, res) => {
+    try {
+        const success = await refuseConnection(
+            req.params.senderId,
+            req.user.id_user.toString()
+        );
+
+        if (!success) {
+            return res.status(404).json({
+                success: false,
+                message: 'Connection request not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Connection request refused'
+        });
+    } catch (error) {
+        console.error('Connection refuse error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
 // Get user's connections
 router.get('/', authenticateToken, async (req, res) => {
     try {
@@ -82,6 +113,31 @@ router.get('/pending', authenticateToken, async (req, res) => {
         });
     } catch (error) {
         console.error('Pending connections retrieval error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Delete existing connection
+router.delete('/:userId', authenticateToken, async (req, res) => {
+    try {
+        const success = await deleteConnection(
+            req.user.id_user.toString(),
+            req.params.userId
+        );
+
+        if (!success) {
+            return res.status(404).json({
+                success: false,
+                message: 'Connection not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Connection deleted successfully'
+        });
+    } catch (error) {
+        console.error('Connection deletion error:', error);
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
