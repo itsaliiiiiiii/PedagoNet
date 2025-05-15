@@ -23,7 +23,7 @@ const {
     getReplies,
     toggleLike: toggleCommentLike
 } = require('../services/comment.service');
-const { getConnections } = require('../services/neo4j.service');
+const { getConnections } = require('../services/connection.service');
 
 // Create a new post with file uploads
 router.post('/', authenticateToken, upload.array('attachments', 5), async (req, res) => {
