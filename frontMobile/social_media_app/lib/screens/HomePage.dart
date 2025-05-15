@@ -1,18 +1,18 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:social_media_app/core/Api.dart';
 import 'package:social_media_app/screens/CreatePostPage.dart';
 import 'package:social_media_app/screens/FriendPage.dart';
+import 'package:social_media_app/screens/auth/LoginPage2.dart';
 import 'package:social_media_app/screens/MessagesPage.dart';
 import 'package:social_media_app/screens/ProfilePage.dart';
 import 'package:social_media_app/widgets/homePage/Post/Post.dart';
 import 'package:http/http.dart' as http;
 
 class HomePage extends StatefulWidget {
-  final String token;
-
-  HomePage({required this.token});
+  String token = "";
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -24,18 +24,26 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _fetchPosts();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    await _initToken();
+    await _fetchPosts();
+  }
+
+  Future<void> _initToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    widget.token = prefs.getString('token') ?? "";
   }
 
   Future<void> _fetchPosts() async {
-    print("token ${widget.token}");
     final response = await http.get(
       Uri.parse('${Api.baseUrl}/posts'),
       headers: {'Authorization': 'Bearer ${widget.token}'},
     );
 
     if (response.statusCode == 200) {
-      // print('response : ${response.body}');
       final Map<String, dynamic> responseData = json.decode(response.body);
 
       print(responseData);
@@ -259,12 +267,14 @@ class _HomePageState extends State<HomePage> {
                   border: Border.all(color: Colors.white, width: 2),
                 ),
                 child: ClipOval(
-                  child: CircleAvatar(child: Icon(Icons.person),)
-                  // Image.network(
-                  //   'https://media.licdn.com/dms/image/v2/D5622AQHC6U0LmDdu3g/feedshare-shrink_800/B56ZYqUWeIH0Ak-/0/1744466701049?e=1747267200&v=beta&t=5cVOs_2GPFYZUb42Gl46DPyji4j9gGyxlY660DAEttY',
-                  //   fit: BoxFit.cover,
-                  // ),
-                ),
+                    child: CircleAvatar(
+                  child: Icon(Icons.person),
+                )
+                    // Image.network(
+                    //   'https://media.licdn.com/dms/image/v2/D5622AQHC6U0LmDdu3g/feedshare-shrink_800/B56ZYqUWeIH0Ak-/0/1744466701049?e=1747267200&v=beta&t=5cVOs_2GPFYZUb42Gl46DPyji4j9gGyxlY660DAEttY',
+                    //   fit: BoxFit.cover,
+                    // ),
+                    ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -619,9 +629,15 @@ class _HomePageState extends State<HomePage> {
                     child: const Text('Annuler'),
                   ),
                   TextButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      // Perform logout action
+                    onPressed: () async {
+                      final prefs = await SharedPreferences.getInstance();
+                      prefs.remove('token');
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => LoginPage(),
+                        ),
+                      );
                     },
                     child: const Text('Déconnecter'),
                   ),

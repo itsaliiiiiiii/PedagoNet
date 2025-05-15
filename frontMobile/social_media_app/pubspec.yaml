@@ -32,6 +32,8 @@ dependencies:
     sdk: flutter
   http:
   image_picker: ^0.8.9
+  shared_preferences: ^2.1.0
+  pin_code_fields:
 
   flutter_plugin_android_lifecycle: ^2.0.15
 

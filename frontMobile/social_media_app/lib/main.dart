@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:social_media_app/screens/LoginPage.dart';
+import 'package:social_media_app/screens/auth/LoginPage2.dart';
 import 'screens/HomePage.dart';
 
 void main() {
