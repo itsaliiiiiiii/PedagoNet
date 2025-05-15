@@ -77,6 +77,16 @@ class Neo4jRepository extends BaseRepository {
         const records = await this.executeQuery(query, { senderId, receiverId });
         return records[0]?.get('wasDeleted') || false;
     }
+
+    async deleteConnection(userId1, userId2) {
+        const query = `
+            MATCH (u1:User {id_user: $userId1})-[r:CONNECTION]-(u2:User {id_user: $userId2})
+            DELETE r
+            RETURN COUNT(r) > 0 as wasDeleted`;
+    
+        const records = await this.executeQuery(query, { userId1, userId2 });
+        return records[0]?.get('wasDeleted') || false;
+    }
 }
 
 module.exports = Neo4jRepository;

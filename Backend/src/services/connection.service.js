@@ -43,9 +43,19 @@ const refuseConnection = async (senderId, receiverId) => {
     }
 };
 
+const deleteConnection = async (userId1, userId2) => {
+    try {
+        return await connectionRepository.deleteConnection(userId1, userId2);
+    } catch (error) {
+        console.error('Error deleting connection:', error);
+        return false;
+    }
+};
+
 module.exports = {
     createConnection,
     updateConnectionStatus,
     getConnections,
-    refuseConnection
+    refuseConnection,
+    deleteConnection
 };
