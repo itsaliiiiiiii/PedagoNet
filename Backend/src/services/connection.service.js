@@ -1,4 +1,4 @@
-const Neo4jRepository = require('../repositories/neo4j.repository');
+const Neo4jRepository = require('../repositories/connection.repository');
 const neo4jRepository = new Neo4jRepository();
 
 const ConnectionRepository = require('../repositories/connection.repository');
