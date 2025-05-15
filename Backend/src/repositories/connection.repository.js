@@ -67,6 +67,16 @@ class Neo4jRepository extends BaseRepository {
             sentAt: record.get('sentAt').toString()
         }));
     }
+
+    async refuseConnection(senderId, receiverId) {
+        const query = `
+            MATCH (sender:User {id_user: $senderId})-[r:REQUESTED]->(receiver:User {id_user: $receiverId})
+            DELETE r
+            RETURN COUNT(r) > 0 as wasDeleted`;
+    
+        const records = await this.executeQuery(query, { senderId, receiverId });
+        return records[0]?.get('wasDeleted') || false;
+    }
 }
 
 module.exports = Neo4jRepository;

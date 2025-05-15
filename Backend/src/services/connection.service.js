@@ -1,12 +1,15 @@
 const Neo4jRepository = require('../repositories/neo4j.repository');
 const neo4jRepository = new Neo4jRepository();
 
+const ConnectionRepository = require('../repositories/connection.repository');
+const connectionRepository = new ConnectionRepository();
+
 const createConnection = async (senderId, receiverId, status = 'pending') => {
     try {
-        const success = await neo4jRepository.createConnection(senderId, receiverId, status);
+        const success = await connectionRepository.createConnection(senderId, receiverId, status);
         return success;
     } catch (error) {
-        console.error('Neo4j connection creation error:', error);
+        console.error('Connection creation error:', error);
         return false;
     }
 };
@@ -31,8 +34,18 @@ const getConnections = async (userId, status = null) => {
     }
 };
 
+const refuseConnection = async (senderId, receiverId) => {
+    try {
+        return await neo4jRepository.refuseConnection(senderId, receiverId);
+    } catch (error) {
+        console.error('Error refusing connection:', error);
+        return false;
+    }
+};
+
 module.exports = {
     createConnection,
     updateConnectionStatus,
-    getConnections
+    getConnections,
+    refuseConnection
 };
