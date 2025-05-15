@@ -109,7 +109,7 @@ export default function MyConnectionsPage() {
   // Gérer la suppression d'une connexion
   const handleRemoveConnection = async (userId: string) => {
     try {
-      const response = await fetch(`http://localhost:8080/connections/remove/${userId}`, {
+      const response = await fetch(`http://localhost:8080/connections/${userId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",

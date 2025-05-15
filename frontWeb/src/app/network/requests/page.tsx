@@ -129,8 +129,8 @@ export default function ConnectionRequestsPage() {
   const handleRejectRequest = async (userId: string) => {
     try {
       // Call your API to reject the request
-      const response = await fetch(`http://localhost:8080/connections/reject/${userId}`, {
-        method: "POST",
+      const response = await fetch(`http://localhost:8080/connections/refuse/${userId}`, {
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
@@ -234,9 +234,6 @@ export default function ConnectionRequestsPage() {
                     className="w-full pl-10 pr-4 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
-
-                {/* Spacer */}
-                <div className="mt-4 border-b border-gray-200 dark:border-gray-700"></div>
               </div>
 
               {/* Loading State */}
