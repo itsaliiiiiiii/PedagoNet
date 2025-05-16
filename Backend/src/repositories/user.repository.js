@@ -27,6 +27,8 @@ class UserRepository extends BaseRepository {
                 lastName: $lastName,
                 dateOfBirth: datetime($dateOfBirth),
                 role: $role,
+                department: $department,
+                class: $class,
                 isVerified: $isVerified,
                 createdAt: datetime(),
                 updatedAt: datetime()
@@ -40,7 +42,9 @@ class UserRepository extends BaseRepository {
             lastName: userData.lastName,
             dateOfBirth: userData.dateOfBirth,
             role: userData.role,
-            isVerified: false
+            department: userData.role === 'professor' ? userData.department : null,
+            class: userData.role === 'student' ? userData.class : null,
+            isVerified: userData.isVerified || false
         };
 
         const records = await this.executeQuery(query, params);
