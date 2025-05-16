@@ -89,9 +89,7 @@ const createComment = async (userId, postId, content, parentCommentId = null) =>
 
 const getPostComments = async (postId, limit = 10, skip = 0) => {
     try {
-        const commentDoc = await Comment.findOne({ postId })
-            .populate('comments.userId', 'firstName lastName profilePhoto')
-            .populate('comments.replies.userId', 'firstName lastName profilePhoto');
+        const commentDoc = await Comment.findOne({ postId });
 
         if (!commentDoc) {
             return { success: true, data: [] };
@@ -101,7 +99,54 @@ const getPostComments = async (postId, limit = 10, skip = 0) => {
             .sort((a, b) => b.createdAt - a.createdAt)
             .slice(skip, skip + limit);
 
-        return { success: true, data: comments };
+        // Get all unique user IDs from comments and replies
+        const userIds = new Set();
+        comments.forEach(comment => {
+            userIds.add(comment.userId);
+            comment.replies.forEach(reply => userIds.add(reply.userId));
+        });
+
+        // Fetch all users info from Neo4j in one query
+        const userQuery = `
+            MATCH (u:User)
+            WHERE u.id_user IN $userIds
+            RETURN u
+        `;
+        const usersResult = await baseRepo.executeQuery(userQuery, { 
+            userIds: Array.from(userIds) 
+        });
+
+        // Update the user info mapping
+        const userMap = {};
+        usersResult.forEach(record => {
+            const user = record.get('u').properties;
+            userMap[user.id_user] = {
+                firstName: user.firstName,
+                lastName: user.lastName,
+                profilePhoto: user.profilePhoto || null,
+                role: user.role
+            };
+        });
+
+        // Enhance comments with complete user info
+        const enhancedComments = comments.map(comment => ({
+            _id: comment._id,
+            content: comment.content,
+            createdAt: comment.createdAt,
+            updatedAt: comment.updatedAt,
+            likes: comment.likes,
+            user: userMap[comment.userId],
+            replies: comment.replies.map(reply => ({
+                _id: reply._id,
+                content: reply.content,
+                createdAt: reply.createdAt,
+                updatedAt: reply.updatedAt,
+                likes: reply.likes,
+                user: userMap[reply.userId]
+            }))
+        }));
+
+        return { success: true, data: enhancedComments };
     } catch (error) {
         console.error('Comments retrieval error:', error);
         return { success: false, message: 'Failed to retrieve comments' };
