@@ -7,7 +7,7 @@ class PostRepository extends BaseRepository {
         const query = `
             MATCH (author:User {id_user: $authorId})
             CREATE (p:Post {
-                id: randomUUID(),
+                id_post: randomUUID(),
                 content: $content,
                 visibility: $visibility,
                 createdAt: datetime(),
