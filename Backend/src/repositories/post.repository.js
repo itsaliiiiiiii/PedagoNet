@@ -381,7 +381,7 @@ class PostRepository extends BaseRepository {
 
     async getPostLikedUsers(postId, limit = 10, skip = 0) {
         const query = `
-            MATCH (user:User)-[:LIKE]->(post:Post {id_post: $postId})
+            MATCH (user:User)-[:LIKE]->(post:Post {id: $postId})
             WITH user
             ORDER BY user.firstName
             SKIP $skip
