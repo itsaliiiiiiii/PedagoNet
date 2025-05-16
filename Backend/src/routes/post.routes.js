@@ -7,12 +7,12 @@ const {
     getPosts, 
     getPostById, 
     updatePost, 
-    deletePost, 
-    markPostAsSeen, 
+    deletePost,
+    markPostAsSeen,
     getSeenPosts,
-    getUserPosts,  // Add this import
+    getUserPosts,
     toggleLike,
-    getLikes
+    getPostLikedUsers  // Add this import
 } = require('../services/post.service');
 const {
     addComment,
@@ -23,7 +23,7 @@ const {
     getReplies,
     toggleLike: toggleCommentLike
 } = require('../services/comment.service');
-const { getConnections } = require('../services/neo4j.service');
+const { getConnections } = require('../services/connection.service');
 
 // Create a new post with file uploads
 router.post('/', authenticateToken, upload.array('attachments', 5), async (req, res) => {
@@ -318,19 +318,30 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
     }
 });
 
-// Get users who liked a specific post
+// Get users who liked a post
 router.get('/:id/likes', authenticateToken, async (req, res) => {
     try {
-        const result = await getLikes(req.params.id);
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = parseInt(req.query.skip) || 0;
         
-        if (!result.success) {
-            return res.status(400).json(result);
-        }
-        
-        res.json(result);
+        const users = await getPostLikedUsers(req.params.id, limit, skip);
+
+        res.json({
+            success: true,
+            users: users || [],
+            pagination: {
+                limit,
+                skip,
+                hasMore: users && users.length === limit
+            }
+        });
     } catch (error) {
-        console.error('Error getting post likes:', error);
-        res.status(500).json({ success: false, message: 'Internal server error' });
+        console.error('Get post likes error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to get post likes',
+            error: error.message 
+        });
     }
 });
 

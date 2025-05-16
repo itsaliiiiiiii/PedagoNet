@@ -10,11 +10,11 @@ const {
 } = require('../services/comment.service');
 
 // Create a new comment or reply
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/:postId', authenticateToken, async (req, res) => {
     try {
-        const result = await addComment(
-            req.body.postId,
+        const result = await createComment(
             req.user.id_user,
+            req.params.postId,
             req.body.content,
             req.body.parentCommentId || null
         );

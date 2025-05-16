@@ -3,8 +3,7 @@ const mongoose = require('mongoose');
 const replySchema = new mongoose.Schema({
     userId: {
         type: String,
-        required: true,
-        // ref: 'User'
+        required: true
     },
     content: {
         type: String,
@@ -18,52 +17,34 @@ const replySchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     },
-    likes: [{
-        type: String,
-        // ref: 'User'
-    }]
+    likes: [String] // Array of user IDs
 });
 
 const commentSchema = new mongoose.Schema({
     postId: {
         type: String,
-        required: true,
-        ref: 'Post'
-    },
-    userId: {
-        type: String,
-        required: true,
-        // ref: 'User'
-    },
-    content: {
-        type: String,
         required: true
     },
-    createdAt: {
-        type: Date,
-        default: Date.now
-    },
-    updatedAt: {
-        type: Date,
-        default: Date.now
-    },
-    likes: [{
-        type: String,
-        // ref: 'User'
-    }],
-    replies: [replySchema]
-});
-
-// Update timestamps on save
-commentSchema.pre('save', function(next) {
-    this.updatedAt = Date.now();
-    next();
-});
-
-// Update timestamps on replies
-commentSchema.pre('findOneAndUpdate', function(next) {
-    this.set({ updatedAt: Date.now() });
-    next();
+    comments: [{
+        userId: {
+            type: String,
+            required: true
+        },
+        content: {
+            type: String,
+            required: true
+        },
+        createdAt: {
+            type: Date,
+            default: Date.now
+        },
+        updatedAt: {
+            type: Date,
+            default: Date.now
+        },
+        likes: [String], // Array of user IDs
+        replies: [replySchema]
+    }]
 });
 
 const Comment = mongoose.model('Comment', commentSchema);
