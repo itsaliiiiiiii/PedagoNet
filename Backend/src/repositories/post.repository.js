@@ -348,7 +348,7 @@ class PostRepository extends BaseRepository {
 
     async toggleLike(postId, userId) {
         const query = `
-            MATCH (user:User {id_user: $userId}), (post:Post {id_post: $postId})
+            MATCH (user:User {id_user: $userId}), (post:Post {id: $postId})
             OPTIONAL MATCH (user)-[like:LIKE]->(post)
             WITH user, post, like
             FOREACH (x IN CASE 

@@ -7,6 +7,7 @@ const connectionRoutes = require('./src/routes/connection.routes');
 const postRoutes = require('./src/routes/post.routes');
 const messageRoutes = require('./src/routes/message.routes');
 const taskRoutes = require('./src/routes/task.routes');
+const commentsRoutes = require('./src/routes/comment.routes');
 const profileRoutes = require('./src/routes/profile.routes');
 const cookieParser = require('cookie-parser');
 require('dotenv').config();
@@ -42,6 +43,7 @@ app.use('/classrooms', classroomRoutes);
 app.use('/connections', connectionRoutes);
 app.use('/posts', postRoutes);
 app.use('/messages', messageRoutes);
+app.use('/comments', commentsRoutes);
 app.use('/tasks', taskRoutes);
 
 // Error handling middleware

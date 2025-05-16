@@ -18,23 +18,16 @@ const fileFilter = (req, file, cb) => {
     const allowedTypes = [
         // Documents
         'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/vnd.ms-excel',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'application/vnd.ms-powerpoint',
-        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-        'text/plain',
         // Images
         'image/jpeg',
         'image/png',
         'image/gif',
         'image/webp',
-        'image/svg+xml',
-        // Executables
-        'application/x-msdownload',
-        'application/x-executable',
-        'application/octet-stream'
+        // Videos
+        'video/mp4',
+        'video/mpeg',
+        'video/quicktime',
+        'video/x-msvideo'
     ];
 
     if (allowedTypes.includes(file.mimetype)) {
