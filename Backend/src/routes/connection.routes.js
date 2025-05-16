@@ -61,7 +61,7 @@ router.put('/accept/:receiverId', authenticateToken, async (req, res) => {
 // Get user's connections
 router.get('/', authenticateToken, async (req, res) => {
     try {
-        const connections = await getConnections(req.user._id.toString(), 'accepted');
+        const connections = await getConnections(req.user.id_user.toString(), 'accepted');
         res.json({
             success: true,
             connections

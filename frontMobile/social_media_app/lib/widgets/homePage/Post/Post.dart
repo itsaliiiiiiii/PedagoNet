@@ -17,6 +17,7 @@ class Post extends StatefulWidget {
   final String? filename;
   final int likes;
   final bool isLiked;
+  final String relation;
 
   const Post(
       {super.key,
@@ -28,6 +29,7 @@ class Post extends StatefulWidget {
       this.description,
       this.filename,
       required this.likes,
+      required this.relation,
       required this.isLiked});
 
   @override
@@ -79,7 +81,7 @@ class _PostState extends State<Post> {
   }
 
   Widget buildImage() {
-    print('Filename: ${widget.filename}'); 
+    print('Filename: ${widget.filename}');
 
     if (widget.filename != null && widget.filename!.isNotEmpty) {
       return ClipRRect(
@@ -142,31 +144,51 @@ class _PostState extends State<Post> {
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              CircleAvatar(
-                child: Icon(
-                  Icons.person,
-                  size: 30,
-                  color: const Color.fromARGB(255, 59, 58, 58),
-                ),
-                backgroundColor: const Color.fromARGB(255, 137, 136, 136),
-                radius: 20,
+              Row(
+                children: [
+                  CircleAvatar(
+                    child: Icon(
+                      Icons.person,
+                      size: 30,
+                      color: const Color.fromARGB(255, 59, 58, 58),
+                    ),
+                    backgroundColor: const Color.fromARGB(255, 137, 136, 136),
+                    radius: 20,
+                  ),
+                  SizedBox(
+                    width: 10,
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(widget.name,
+                          style: TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w600)),
+                      Text(widget.role,
+                          style: TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w300)),
+                      Text(widget.time,
+                          style: TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w300)),
+                    ],
+                  ),
+                ],
               ),
               SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(widget.name,
-                      style:
-                          TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                  Text(widget.role,
-                      style:
-                          TextStyle(fontSize: 12, fontWeight: FontWeight.w300)),
-                  Text(widget.time,
-                      style:
-                          TextStyle(fontSize: 12, fontWeight: FontWeight.w300)),
-                ],
-              )
+
+              if(widget.relation=="amis")...[
+              ]else if(widget.relation=="send") ...[
+                Text('Send...',style: TextStyle(color: Colors.grey),)
+              ] else if(widget.relation=="foreign")...[
+              TextButton(
+                  onPressed: () {},
+                  child: Text(
+                    '+ inviter ',
+                    style: TextStyle(color: Colors.blue, fontSize: 16),
+                  ))
+              ]
             ],
           ),
           // Divider(

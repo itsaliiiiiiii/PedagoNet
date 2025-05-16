@@ -1,8 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:social_media_app/core/Api.dart';
 import 'package:social_media_app/models/PostModel.dart';
 import 'package:social_media_app/widgets/deatilsPostPage/Comment.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class PostDetails extends StatefulWidget {
   final PostModel post;
@@ -14,7 +18,9 @@ class PostDetails extends StatefulWidget {
 }
 
 class _PostDetailsState extends State<PostDetails> {
-  final List<Map<String, String>> comments = [];
+  List<Map<String, dynamic>> comments = [];
+  List<Map<String, dynamic>> likes = [];
+
   //   {
   //     "userName": "Aya ElMansouri",
   //     "role": "Étudiante",
@@ -45,6 +51,8 @@ class _PostDetailsState extends State<PostDetails> {
     super.initState();
     _isLiked = widget.post.isLiked;
     _iconColor = _isLiked ? Colors.blue : Colors.grey;
+    _fetchComments();
+    _fetchLikes();
   }
 
   void _toggleColor() {
@@ -54,12 +62,93 @@ class _PostDetailsState extends State<PostDetails> {
     });
   }
 
-  Future<dynamic> fetchComments() async {
+  Future<void> _fetchComments() async {
     String url = "${Api.baseUrl}/posts/${widget.post.postId}/comments";
 
-    dynamic result = http.get(Uri.parse(url),headers: {
-      'Authorization':'Bearer',
+    final pref = await SharedPreferences.getInstance();
+    final token = pref.getString('token');
+
+    if (token == null) {
+      // gérer l'absence de token, si besoin
+      return;
+    }
+
+    final response = await http.get(Uri.parse(url), headers: {
+      'Authorization': 'Bearer $token',
     });
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> jsonData = jsonDecode(response.body);
+
+      if (jsonData['success'] == true) {
+        setState(() {
+          comments = List<Map<String, dynamic>>.from(jsonData['comments']
+              .map((comment) => Map<String, dynamic>.from(comment)));
+          print(comments);
+        });
+      } else {
+        print('Erreur : success = false');
+      }
+    } else {
+      print('Erreur HTTP : ${response.statusCode}');
+    }
+  }
+
+  Future<void> _fetchLikes() async {
+    String url = "${Api.baseUrl}/posts/${widget.post.postId}/likes";
+
+    final pref = await SharedPreferences.getInstance();
+    final token = pref.getString('token');
+
+    if (token == null) {
+      return;
+    }
+
+    final response = await http.get(Uri.parse(url), headers: {
+      'Authorization': 'Bearer $token',
+    });
+
+    if (response.statusCode == 200) {
+      print(response.body);
+      final Map<String, dynamic> jsonData = jsonDecode(response.body);
+
+      if (jsonData['success'] == true) {
+        setState(() {
+          likes = List<Map<String, dynamic>>.from(
+              jsonData['users'].map((liks) => Map<String, dynamic>.from(liks)));
+          print(likes);
+        });
+      } else {
+        print('Erreur : success = false');
+      }
+    } else {
+      print('Erreur HTTP : ${response.statusCode}');
+    }
+  }
+
+  Future<void> _addComment() async {
+    String url = "${Api.baseUrl}/comments";
+
+    final pref = await SharedPreferences.getInstance();
+    final token = pref.getString('token');
+
+    if (controller.text.trim().isNotEmpty) {
+      dynamic response = await http.post(Uri.parse(url),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+          body: json.encode({
+            'postId': widget.post.postId,
+            'content': controller.text.trim()
+          }));
+
+      if (response.statusCode == 201) {
+        controller.clear(); // ✅ vider le champ
+        FocusScope.of(context).unfocus(); // ✅ enlever le focus
+        _fetchComments();
+      }
+    }
   }
 
   @override
@@ -114,7 +203,7 @@ class _PostDetailsState extends State<PostDetails> {
                         padding: const EdgeInsets.only(top: 20.0),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(10),
-                          child: Image.network(widget.post.imageUrl!),
+                          // child: Image.network(widget.post.imageUrl!),
                         ),
                       ),
                     SizedBox(height: 10),
@@ -195,7 +284,7 @@ class _PostDetailsState extends State<PostDetails> {
                     SizedBox(
                       height: 60,
                       child: ListView.builder(
-                        itemCount: widget.post.likes,
+                        itemCount: likes.length,
                         scrollDirection: Axis.horizontal,
                         itemBuilder: (context, index) {
                           return Padding(
@@ -217,11 +306,26 @@ class _PostDetailsState extends State<PostDetails> {
                       physics: NeverScrollableScrollPhysics(),
                       itemBuilder: (context, index) {
                         final comment = comments[index];
+
+                        DateTime createdAt;
+                        if (comment['createdAt'] != null) {
+                          createdAt = DateTime.parse(comment['createdAt']!);
+                        } else {
+                          createdAt = DateTime(2025);
+                        }
+                        final String formattedTime =
+                            DateFormat('dd/MM/yyyy HH:mm').format(createdAt);
+
+                        final String userName =
+                            comment['userId'] ?? 'Utilisateur inconnu';
+
+                        final String role = '';
+
                         return Comment(
-                          userName: comment["userName"]!,
-                          role: comment["role"]!,
-                          time: comment["time"]!,
-                          comment: comment["comment"]!,
+                          userName: userName,
+                          role: role,
+                          time: formattedTime,
+                          comment: comment['content'] ?? '',
                         );
                       },
                     ),
@@ -267,18 +371,7 @@ class _PostDetailsState extends State<PostDetails> {
                       child: IconButton(
                         icon: Icon(Icons.send, color: Colors.white, size: 20),
                         onPressed: () {
-                          if (controller.text.trim().isNotEmpty) {
-                            setState(() {
-                              comments.add({
-                                "userName": "Anas Zerhoun",
-                                "role": "Étudiant",
-                                "time": "Maintenant",
-                                "comment": controller.text.trim(),
-                              });
-                            });
-                            FocusScope.of(context).unfocus();
-                            controller.clear();
-                          }
+                          _addComment();
                         },
                       ),
                     ),

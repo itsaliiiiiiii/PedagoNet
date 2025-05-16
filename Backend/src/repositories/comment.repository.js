@@ -17,7 +17,7 @@ class CommentRepository {
         }
     }
 
-    async getPostComments(postId, limit = 10, skip = 0) {
+    async getPostComments(postId, limit = 100, skip = 0) {
         try {
             const comments = await Comment.find({ postId, parentCommentId: null })
                 .sort({ createdAt: -1 })
@@ -39,7 +39,7 @@ class CommentRepository {
         }
     }
 
-    async getCommentReplies(commentId, limit = 10, skip = 0) {
+    async getCommentReplies(commentId, limit = 100, skip = 0) {
         try {
             const comment = await Comment.findById(commentId)
                 .populate({

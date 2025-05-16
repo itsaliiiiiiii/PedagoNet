@@ -1,88 +1,70 @@
-const { connectDatabase, neo4jDriver } = require('../config/database');
-const { connectMongoDB, mongoose } = require('../config/mongodb');
+const mongoose = require('mongoose');
 const crypto = require('crypto');
+const Comment = require('../models/comment.model'); 
 
-// Générateur de contenu aléatoire
-const randomSentences = [
-    "Aujourd'hui, j'ai appris quelque chose de nouveau.",
-    "Un jour parfait commence par une bonne tasse de café.",
-    "Ce post est généré aléatoirement pour tester la plateforme.",
-    "La programmation, c'est comme la magie mais réelle.",
-    "Le soleil brille même après les jours nuageux.",
-    "Connaissance partagée est connaissance doublée.",
-    "Est-ce que quelqu’un d’autre aime le JavaScript ici ?",
-    "L’éducation change le monde, un élève à la fois.",
-    "Chaque jour est une nouvelle opportunité.",
-    "Post généré pour des tests internes. Merci de l’ignorer.",
-    "Test #1 : L’API fonctionne bien.",
-    "Test #2 : Ce contenu est visible publiquement.",
-    "Inspiré par les étoiles, motivé par la connaissance.",
-    "J’apprécie vraiment la plateforme aujourd’hui.",
-    "Un bug corrigé est une victoire célébrée.",
-    "Le savoir est un super-pouvoir.",
-    "Apprendre n’est jamais une perte de temps.",
-    "L’enseignement est un art autant qu’une science.",
-    "Toujours curieux, toujours en train d’explorer.",
-    "Les tests passent, la paix règne."
+// Exemple de phrases aléatoires pour les commentaires
+const randomComments = [
+  "Super post, merci pour le partage !",
+  "Je suis tout à fait d'accord avec toi.",
+  "Peux-tu développer davantage ce point ?",
+  "Excellent contenu, continue comme ça.",
+  "J'ai une question par rapport à ce que tu as dit.",
+  "Merci pour cette information précieuse.",
+  "Cela m'a beaucoup aidé, merci !",
+  "Intéressant, je vais creuser le sujet.",
+  "J'aime bien ton point de vue.",
+  "C'est une très bonne idée !",
 ];
 
-// Génération de 20 posts aléatoires
-const posts = Array.from({ length: 20 }, () => ({
-    content: randomSentences[Math.floor(Math.random() * randomSentences.length)],
-    visibility: 'public',
-    likesCount: Math.floor(Math.random() * 101) // 0 à 100
-}));
+// Exemple simple d'utilisateurs (doit correspondre à ceux en base)
+const users = [
+  { id_user: '59b8f4f7-acc2-422a-a8c1-98c96e9a4563' },
+  { id_user: 'd6ac2a29-a88d-460e-b92a-9a7b909d4c1b' },
+  { id_user: '0671c71b-a14c-4d2f-8514-e459fcd2ad0e' },
+];
 
-const seedDatabase = async () => {
-    try {
-        // Connexions aux bases
-        await connectDatabase();
-        await connectMongoDB();
-        const session = neo4jDriver.session();
+// ID du post auquel on ajoute les commentaires (à adapter)
+const targetPostId = 'e53bf74d-cf54-497b-9578-79ab0eb7b05f';
 
-        console.log('🗑️ Suppression des anciens posts de Alice...');
-        await session.run(
-            'MATCH (p:Post)-[:AUTHORED]->(u:User {email: $email}) DETACH DELETE p',
-            { email: 'test.student@test.com' }
-        );
+// Connexion MongoDB - adapte l'URL
+const mongoUri = 'mongodb://127.0.0.1:27017/test';
 
-        console.log('📝 Création de 20 nouveaux posts aléatoires pour Alice...');
-        for (const post of posts) {
-            const id_post = crypto.randomUUID();
-            await session.run(
-                `
-                MATCH (u:User {email: $email})
-                CREATE (p:Post {
-                    id_post: $id_post,
-                    content: $content,
-                    visibility: $visibility,
-                    likesCount: $likesCount,
-                    createdAt: datetime()
-                })
-                CREATE (u)-[:AUTHORED]->(p)
-                `,
-                {
-                    email: 'test.student@test.com',
-                    id_post,
-                    content: post.content,
-                    visibility: post.visibility,
-                    likesCount: post.likesCount
-                }
-            );
-        }
+async function seedComments() {
+  try {
+    await mongoose.connect(mongoUri, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
 
-        console.log('✅ 20 posts générés avec succès pour Alice !');
+    console.log(`🗑️ Suppression des anciens commentaires du post ${targetPostId}...`);
+    await Comment.deleteMany({ postId: targetPostId });
 
-        // Fermeture des connexions
-        await session.close();
-        await neo4jDriver.close();
-        await mongoose.connection.close();
+    console.log(`📝 Création de commentaires aléatoires pour le post ${targetPostId}...`);
 
-        process.exit(0);
-    } catch (error) {
-        console.error('❌ Erreur pendant le seed :', error);
-        process.exit(1);
+    const commentsToInsert = [];
+
+    for (let i = 0; i < 15; i++) {
+      const user = users[Math.floor(Math.random() * users.length)];
+      const content = randomComments[Math.floor(Math.random() * randomComments.length)];
+
+      commentsToInsert.push({
+        userId: user.id_user,
+        postId: targetPostId,
+        content,
+        createdAt: new Date(),
+      });
     }
-};
 
-seedDatabase();
+    await Comment.insertMany(commentsToInsert);
+
+    console.log("✅ Commentaires créés avec succès !");
+
+    await mongoose.disconnect();
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Erreur lors du seed des commentaires :', error);
+    process.exit(1);
+  }
+}
+
+seedComments();

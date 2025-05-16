@@ -19,7 +19,7 @@ const addComment = async (postId, userId, content) => {
     }
 };
 
-const getComments = async (postId, limit = 10, skip = 0) => {
+const getComments = async (postId, limit = 100, skip = 0) => {
     try {
         const comments = await Comment.find({ postId })
             .sort({ createdAt: -1 })

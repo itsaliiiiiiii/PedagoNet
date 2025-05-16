@@ -23,7 +23,7 @@ class Neo4jRepository extends BaseRepository {
 
     async getConnections(userId, status = null) {
         const query = status ?
-            `MATCH (u:User {id_user: $userId})<-[r:CONNECTION {status: $status}]-(other:User)
+            `MATCH (u:User {id_user: $userId})-[r:CONNECTION {status: $status}]-(other:User)
             RETURN other.id_user as id,
                    other.email as email,
                    other.firstName as firstName,
@@ -35,7 +35,7 @@ class Neo4jRepository extends BaseRepository {
                    r.status as status,
                    r.createdAt as sentAt
             ORDER BY r.createdAt DESC` :
-            `MATCH (u:User {id_user: $userId})<-[r:CONNECTION]-(other:User)
+            `MATCH (u:User {id_user: $userId})-[r:CONNECTION]-(other:User)
             RETURN other.id_user as id,
                    other.email as email,
                    other.firstName as firstName,

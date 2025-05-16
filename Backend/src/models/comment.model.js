@@ -4,7 +4,7 @@ const replySchema = new mongoose.Schema({
     userId: {
         type: String,
         required: true,
-        ref: 'User'
+        // ref: 'User'
     },
     content: {
         type: String,
@@ -20,7 +20,7 @@ const replySchema = new mongoose.Schema({
     },
     likes: [{
         type: String,
-        ref: 'User'
+        // ref: 'User'
     }]
 });
 
@@ -33,7 +33,7 @@ const commentSchema = new mongoose.Schema({
     userId: {
         type: String,
         required: true,
-        ref: 'User'
+        // ref: 'User'
     },
     content: {
         type: String,
@@ -49,7 +49,7 @@ const commentSchema = new mongoose.Schema({
     },
     likes: [{
         type: String,
-        ref: 'User'
+        // ref: 'User'
     }],
     replies: [replySchema]
 });

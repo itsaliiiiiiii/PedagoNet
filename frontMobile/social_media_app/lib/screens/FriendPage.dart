@@ -514,12 +514,12 @@ class _FriendsPageState extends State<FriendsPage> {
           ),
           child: friend['avatar'] != null && friend['avatar'].isNotEmpty
               ? ClipOval(
-                  child: Image.network(
-                    friend['avatar'],
-                    fit: BoxFit.cover,
-                    width: 60,
-                    height: 60,
-                  ),
+                  // child: Image.network(
+                  //   friend['avatar'],
+                  //   fit: BoxFit.cover,
+                  //   width: 60,
+                  //   height: 60,
+                  // ),
                 )
               : Center(
                   child: Text(

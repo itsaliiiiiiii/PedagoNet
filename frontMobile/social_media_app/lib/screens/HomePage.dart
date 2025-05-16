@@ -1,13 +1,16 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:social_media_app/core/Api.dart';
 import 'package:social_media_app/screens/CreatePostPage.dart';
 import 'package:social_media_app/screens/FriendPage.dart';
+import 'package:social_media_app/screens/InvitationsPage.dart';
 import 'package:social_media_app/screens/auth/LoginPage2.dart';
 import 'package:social_media_app/screens/MessagesPage.dart';
 import 'package:social_media_app/screens/ProfilePage.dart';
+import 'package:social_media_app/widgets/NavbarWidget.dart';
 import 'package:social_media_app/widgets/homePage/Post/Post.dart';
 import 'package:http/http.dart' as http;
 
@@ -20,16 +23,51 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   List<Map<String, dynamic>> posts = [];
+  List<Map<String, dynamic>> friends = [];
+
+  bool _isBottomNavVisible = true;
+  ScrollController _scrollController = ScrollController();
+  int _selectedIndex = 0;
 
   @override
   void initState() {
     super.initState();
     _initialize();
+    _setupScrollController();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _setupScrollController() {
+    _scrollController.addListener(() {
+      if (_scrollController.position.userScrollDirection ==
+          ScrollDirection.reverse) {
+        if (_isBottomNavVisible) {
+          setState(() {
+            _isBottomNavVisible = false;
+          });
+        }
+      }
+
+      if (_scrollController.position.userScrollDirection ==
+          ScrollDirection.forward) {
+        if (!_isBottomNavVisible) {
+          setState(() {
+            _isBottomNavVisible = true;
+          });
+        }
+      }
+    });
   }
 
   Future<void> _initialize() async {
     await _initToken();
     await _fetchPosts();
+    await _fetchFriends();
   }
 
   Future<void> _initToken() async {
@@ -55,6 +93,28 @@ class _HomePageState extends State<HomePage> {
       });
     } else {
       print('Erreur lors de la récupération des posts');
+    }
+  }
+
+  Future<void> _fetchFriends() async {
+    final response = await http.get(
+      Uri.parse('${Api.baseUrl}/connections'),
+      headers: {'Authorization': 'Bearer ${widget.token}'},
+    );
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> responseData = json.decode(response.body);
+
+      final List<dynamic> friendData = responseData['connections'];
+
+
+      setState(() {
+        friends =
+            friendData.map((post) => post as Map<String, dynamic>).toList();
+
+      });
+    } else {
+      print('Erreur lors de la récupération des friends');
     }
   }
 
@@ -169,6 +229,7 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
       body: ListView(
+        controller: _scrollController,
         padding: const EdgeInsets.all(10),
         children: [
           GestureDetector(
@@ -232,18 +293,46 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ),
-          ...posts.map((post) => Post(
-                token: widget.token,
-                postId: post['id'],
-                name: post['author']['firstName']!,
-                role: 'Student',
-                time: post['createdAt']['year']['low'].toString(),
-                description: post['content'],
-                filename: post['attachments'][0]['filename'],
-                likes: post['likesCount'],
-                isLiked: false,
-              )),
+          ...posts.map((post) {
+            final String authorId = post['author']['id'];
+            String relation = 'foreign';
+
+            final friend = friends.firstWhere(
+              (f) => f['userId'] == authorId,
+              orElse: () => {},
+            );
+
+            
+
+            if (friend.isNotEmpty) {
+              final status = friend['status'];
+              if (status == 'accepted') {
+                relation = 'amis';
+              } else if (status == 'sent') {
+                relation = 'send';
+              }
+            }
+
+            return Post(
+              token: widget.token,
+              postId: post['id'],
+              name: post['author']['firstName']!,
+              role: 'Student',
+              time: post['createdAt']['year']['low'].toString(),
+              description: post['content'],
+              filename: post['attachments'].isNotEmpty
+                  ? post['attachments'][0]['filename']
+                  : '',
+              likes: post['likesCount'],
+              isLiked: false,
+              relation: relation,
+            );
+          }),
         ],
+      ),
+      bottomNavigationBar: Navbarwidget(
+        isBottomNavVisible: _isBottomNavVisible,
+        currentIndex: 0,
       ),
     );
   }
@@ -405,35 +494,6 @@ class _HomePageState extends State<HomePage> {
             );
           },
         ),
-        ListTile(
-          leading: Icon(Icons.notifications_rounded, color: Colors.blue[700]),
-          title: const Text(
-            'Notifications',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          trailing: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.red[400],
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Text(
-              'Nouveau',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          onTap: () {
-            Navigator.pop(context);
-            // Navigate to notifications page
-          },
-        ),
       ],
     );
   }
@@ -455,9 +515,9 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         ListTile(
-          leading: Icon(Icons.book_rounded, color: Colors.green[700]),
+          leading: Icon(Icons.school_rounded, color: Colors.green[700]),
           title: const Text(
-            'Mes cours',
+            'Classroom',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w500,
@@ -465,65 +525,7 @@ class _HomePageState extends State<HomePage> {
           ),
           onTap: () {
             Navigator.pop(context);
-            // Navigate to courses page
-          },
-        ),
-        ListTile(
-          leading: Icon(Icons.assignment_rounded, color: Colors.orange[700]),
-          title: const Text(
-            'Devoirs',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          trailing: Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: Colors.orange[400],
-              shape: BoxShape.circle,
-            ),
-            child: const Text(
-              '3',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          onTap: () {
-            Navigator.pop(context);
-            // Navigate to assignments page
-          },
-        ),
-        ListTile(
-          leading:
-              Icon(Icons.calendar_today_rounded, color: Colors.purple[700]),
-          title: const Text(
-            'Emploi du temps',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          onTap: () {
-            Navigator.pop(context);
-            // Navigate to schedule page
-          },
-        ),
-        ListTile(
-          leading: Icon(Icons.quiz_rounded, color: Colors.blue[700]),
-          title: const Text(
-            'Examens',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          onTap: () {
-            Navigator.pop(context);
-            // Navigate to exams page
+            // Navigate to classroom page
           },
         ),
       ],
@@ -577,20 +579,6 @@ class _HomePageState extends State<HomePage> {
           onTap: () {
             Navigator.pop(context);
             // Navigate to settings page
-          },
-        ),
-        ListTile(
-          leading: Icon(Icons.help_outline_rounded, color: Colors.grey[700]),
-          title: const Text(
-            'Aide et support',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          onTap: () {
-            Navigator.pop(context);
-            // Navigate to help page
           },
         ),
       ],
