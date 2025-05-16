@@ -81,9 +81,11 @@ class _PostDetailsState extends State<PostDetails> {
       final Map<String, dynamic> jsonData = jsonDecode(response.body);
 
       if (jsonData['success'] == true) {
+        print(jsonData);
         setState(() {
-          comments = List<Map<String, dynamic>>.from(jsonData['comments']
+          comments = List<Map<String, dynamic>>.from(jsonData['data']
               .map((comment) => Map<String, dynamic>.from(comment)));
+          print("comments");
           print(comments);
         });
       } else {
@@ -109,14 +111,15 @@ class _PostDetailsState extends State<PostDetails> {
     });
 
     if (response.statusCode == 200) {
-      print(response.body);
+      // print(response.body);
       final Map<String, dynamic> jsonData = jsonDecode(response.body);
 
       if (jsonData['success'] == true) {
+        // print(jsonData['users']);
         setState(() {
-          likes = List<Map<String, dynamic>>.from(
-              jsonData['users'].map((liks) => Map<String, dynamic>.from(liks)));
-          print(likes);
+          likes = List<Map<String, dynamic>>.from(jsonData['users']['users']
+              .map((liks) => Map<String, dynamic>.from(liks)));
+          // print(likes);
         });
       } else {
         print('Erreur : success = false');
@@ -127,7 +130,7 @@ class _PostDetailsState extends State<PostDetails> {
   }
 
   Future<void> _addComment() async {
-    String url = "${Api.baseUrl}/comments";
+    String url = "${Api.baseUrl}/comments/${widget.post.postId}";
 
     final pref = await SharedPreferences.getInstance();
     final token = pref.getString('token');
@@ -139,10 +142,11 @@ class _PostDetailsState extends State<PostDetails> {
             'Content-Type': 'application/json',
           },
           body: json.encode({
-            'postId': widget.post.postId,
+            // 'postId': widget.post.postId,
             'content': controller.text.trim()
           }));
 
+      print(response.statusCode);
       if (response.statusCode == 201) {
         controller.clear(); // ✅ vider le champ
         FocusScope.of(context).unfocus(); // ✅ enlever le focus
@@ -203,7 +207,7 @@ class _PostDetailsState extends State<PostDetails> {
                         padding: const EdgeInsets.only(top: 20.0),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(10),
-                          // child: Image.network(widget.post.imageUrl!),
+                          child: Image.network('${Api.baseUrl}/uploads/${widget.post.imageUrl!}',width: double.infinity,fit: BoxFit.cover,)
                         ),
                       ),
                     SizedBox(height: 10),
@@ -221,6 +225,7 @@ class _PostDetailsState extends State<PostDetails> {
                                 size: 20,
                                 color: const Color.fromARGB(183, 1, 25, 241),
                               ),
+                              SizedBox(width: 3,),
                               Text(widget.post.likes.toString()),
                             ],
                           ),
@@ -231,7 +236,7 @@ class _PostDetailsState extends State<PostDetails> {
                                   FocusScope.of(context).unfocus();
                                 },
                                 child: Text(
-                                  "${widget.post.likes}  Commentaires",
+                                  "${comments.length}  Commentaires",
                                   style: TextStyle(color: Colors.grey),
                                 ),
                               ),
@@ -316,10 +321,12 @@ class _PostDetailsState extends State<PostDetails> {
                         final String formattedTime =
                             DateFormat('dd/MM/yyyy HH:mm').format(createdAt);
 
-                        final String userName =
-                            comment['userId'] ?? 'Utilisateur inconnu';
+                        final userName = (comment['user']['firstName'] +
+                                " " +
+                                comment['user']['lastName']) ??
+                            'Utilisateur inconnu';
 
-                        final String role = '';
+                        final String role = comment['user']['role'];
 
                         return Comment(
                           userName: userName,

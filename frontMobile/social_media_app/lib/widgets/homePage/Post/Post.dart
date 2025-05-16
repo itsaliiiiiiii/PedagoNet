@@ -219,22 +219,25 @@ class _PostState extends State<Post> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
+                      TextButton(
+                              onPressed: () => _DetailsPage(),
+                              child: Row(
                         children: [
                           Icon(
                             Icons.thumb_up,
                             size: 20,
                             color: const Color.fromARGB(183, 1, 25, 241),
                           ),
+                          SizedBox(width: 4,),
                           Text(widget.likes.toString()),
                         ],
-                      ),
+                      )),
                       Row(
                         children: [
                           TextButton(
                               onPressed: () => _DetailsPage(),
                               child: Text(
-                                "${widget.likes}  Commentaires",
+                                "Commentaires",
                                 style: TextStyle(color: Colors.grey),
                               ))
                         ],
