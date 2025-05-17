@@ -2,9 +2,8 @@ const BaseRepository = require('./base.repository');
 const neo4j = require('neo4j-driver');
 
 class PostRepository extends BaseRepository {
-    async createPost(authorId, content, visibility, attachments) {
-        // Remove the parsing here as attachments are already objects
-        const query = `
+    async createPost(authorId, content, visibility, attachments = []) {
+        let query = `
             MATCH (author:User {id_user: $authorId})
             CREATE (p:Post {
                 id: randomUUID(),
@@ -13,7 +12,11 @@ class PostRepository extends BaseRepository {
                 createdAt: datetime(),
                 updatedAt: datetime()
             })
-            CREATE (author)-[:AUTHORED]->(p)
+            CREATE (author)-[:AUTHORED]->(p)`;
+    
+        // Only add attachment handling if attachments exist
+        if (attachments && attachments.length > 0) {
+            query += `
             WITH p, author
             UNWIND $attachments AS attachment
             CREATE (a:Attachment {
@@ -24,14 +27,17 @@ class PostRepository extends BaseRepository {
                 size: attachment.size,
                 createdAt: datetime()
             })
-            CREATE (p)-[:HAS_ATTACHMENT]->(a)
+            CREATE (p)-[:HAS_ATTACHMENT]->(a)`;
+        }
+    
+        query += `
             RETURN p, author`;
     
         const records = await this.executeQuery(query, { 
             authorId, 
             content, 
             visibility, 
-            attachments  // Pass attachments directly
+            attachments 
         });
     
         if (records.length === 0) return null;
@@ -39,13 +45,18 @@ class PostRepository extends BaseRepository {
         const post = records[0].get('p').properties;
         const author = records[0].get('author').properties;
     
-        // Get attachments
-        const attachmentsQuery = `
-            MATCH (p:Post {id: $postId})-[:HAS_ATTACHMENT]->(a:Attachment)
-            RETURN a`;
+        // Initialize empty attachments array
+        let postAttachments = [];
     
-        const attachmentRecords = await this.executeQuery(attachmentsQuery, { postId: post.id });
-        const postAttachments = attachmentRecords.map(record => record.get('a').properties);
+        // Only fetch attachments if they exist
+        if (attachments && attachments.length > 0) {
+            const attachmentsQuery = `
+                MATCH (p:Post {id: $postId})-[:HAS_ATTACHMENT]->(a:Attachment)
+                RETURN a`;
+    
+            const attachmentRecords = await this.executeQuery(attachmentsQuery, { postId: post.id });
+            postAttachments = attachmentRecords.map(record => record.get('a').properties);
+        }
     
         return { 
             post: { ...post, attachments: postAttachments },
@@ -348,7 +359,7 @@ class PostRepository extends BaseRepository {
 
     async toggleLike(postId, userId) {
         const query = `
-            MATCH (user:User {id_user: $userId}), (post:Post {id_post: $postId})
+            MATCH (user:User {id_user: $userId}), (post:Post {id: $postId})
             OPTIONAL MATCH (user)-[like:LIKE]->(post)
             WITH user, post, like
             FOREACH (x IN CASE 

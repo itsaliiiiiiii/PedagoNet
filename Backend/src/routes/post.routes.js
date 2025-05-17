@@ -28,12 +28,18 @@ const { getConnections } = require('../services/connection.service');
 // Create a new post with file uploads
 router.post('/', authenticateToken, upload.array('attachments', 5), async (req, res) => {
     try {
-        const attachments = req.files ? req.files.map(file => ({
-            filename: file.filename,
-            originalName: file.originalname,
-            mimetype: file.mimetype,
-            size: file.size
-        })) : [];
+        // Initialize attachments as empty array
+        const attachments = [];
+        
+        // Only process attachments if files were uploaded
+        if (req.files && req.files.length > 0) {
+            attachments.push(...req.files.map(file => ({
+                filename: file.filename,
+                originalName: file.originalname,
+                mimetype: file.mimetype,
+                size: file.size
+            })));
+        }
 
         const result = await createPost(
             req.user.id_user,
@@ -42,8 +48,11 @@ router.post('/', authenticateToken, upload.array('attachments', 5), async (req, 
             attachments
         );
 
-        if (!result.success) {
-            return res.status(500).json(result);
+        if (!result) {  // Check for null result first
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to create post'
+            });
         }
 
         res.status(201).json({
