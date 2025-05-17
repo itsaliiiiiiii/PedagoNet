@@ -12,6 +12,7 @@ class Post extends StatefulWidget {
   final String postId;
   final String name;
   final String role;
+  final String authorId;
   final String time;
   final String? description;
   final String? filename;
@@ -22,6 +23,7 @@ class Post extends StatefulWidget {
   const Post(
       {super.key,
       required this.token,
+      required this.authorId,
       required this.postId,
       required this.name,
       required this.role,
@@ -78,6 +80,21 @@ class _PostState extends State<Post> {
 
   void _toggleColor() {
     _sendLikeRequest();
+  }
+
+  Future<void> _sendRequest() async {
+    final response = await http.post(
+      Uri.parse('${Api.baseUrl}/connections/request'),
+      headers: {
+        'Authorization': 'Bearer ${widget.token}',
+        'Content-Type': 'application/json',
+      },
+      body: json.encode({'receiverId': widget.authorId}),
+    );
+
+    if(response.statusCode==200){
+      
+    }
   }
 
   Widget buildImage() {
@@ -177,17 +194,20 @@ class _PostState extends State<Post> {
                 ],
               ),
               SizedBox(width: 10),
-
-              if(widget.relation=="amis")...[
-              ]else if(widget.relation=="send") ...[
-                Text('Send...',style: TextStyle(color: Colors.grey),)
-              ] else if(widget.relation=="foreign")...[
-              TextButton(
-                  onPressed: () {},
-                  child: Text(
-                    '+ inviter ',
-                    style: TextStyle(color: Colors.blue, fontSize: 16),
-                  ))
+              if (widget.relation == "amis")
+                ...[
+              ]else if (widget.relation == "send") ...[
+                Text(
+                  'Send...',
+                  style: TextStyle(color: Colors.grey),
+                )
+              ] else if (widget.relation == "foreign") ...[
+                TextButton(
+                    onPressed: _sendRequest,
+                    child: Text(
+                      '+ inviter ',
+                      style: TextStyle(color: Colors.blue, fontSize: 16),
+                    ))
               ]
             ],
           ),
@@ -220,18 +240,20 @@ class _PostState extends State<Post> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       TextButton(
-                              onPressed: () => _DetailsPage(),
-                              child: Row(
-                        children: [
-                          Icon(
-                            Icons.thumb_up,
-                            size: 20,
-                            color: const Color.fromARGB(183, 1, 25, 241),
-                          ),
-                          SizedBox(width: 4,),
-                          Text(widget.likes.toString()),
-                        ],
-                      )),
+                          onPressed: () => _DetailsPage(),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.thumb_up,
+                                size: 20,
+                                color: const Color.fromARGB(183, 1, 25, 241),
+                              ),
+                              SizedBox(
+                                width: 4,
+                              ),
+                              Text(widget.likes.toString()),
+                            ],
+                          )),
                       Row(
                         children: [
                           TextButton(

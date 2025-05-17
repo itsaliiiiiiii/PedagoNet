@@ -2,11 +2,11 @@ const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth.middleware');
 const {
+    createComment,
     getPostComments,
     getCommentReplies,
     updateComment,
     deleteComment,
-    addComment
 } = require('../services/comment.service');
 
 // Create a new comment or reply

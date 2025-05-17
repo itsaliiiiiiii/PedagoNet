@@ -6,82 +6,114 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:social_media_app/widgets/NavbarWidget.dart';
 
 class InvitationsPage extends StatefulWidget {
-  const InvitationsPage({Key? key}) : super(key: key);
+  InvitationsPage({Key? key}) : super(key: key);
 
   @override
   State<InvitationsPage> createState() => _InvitationsPageState();
 }
 
-class _InvitationsPageState extends State<InvitationsPage> with SingleTickerProviderStateMixin {
-  List<Map<String, dynamic>> _pendingInvitations  = [
-            {
-              'id': '1',
-              'sender': {
-                'id': '101',
-                'firstName': 'Sophie',
-                'lastName': 'Martin',
-                'avatar': 'https://randomuser.me/api/portraits/women/44.jpg',
-                'role': 'Étudiante',
-                'department': 'Génie Informatique',
-                'sentAt': DateTime.now().subtract(const Duration(hours: 2)),
-              }
-            },
-            {
-              'id': '2',
-              'sender': {
-                'id': '102',
-                'firstName': 'Thomas',
-                'lastName': 'Dubois',
-                'avatar': 'https://randomuser.me/api/portraits/men/32.jpg',
-                'role': 'Professeur',
-                'department': 'Mathématiques',
-                'sentAt': DateTime.now().subtract(const Duration(days: 1)),
-              }
-            },
-            {
-              'id': '3',
-              'sender': {
-                'id': '103',
-                'firstName': 'Léa',
-                'lastName': 'Bernard',
-                'avatar': 'https://randomuser.me/api/portraits/women/68.jpg',
-                'role': 'Étudiante',
-                'department': 'Génie Civil',
-                'sentAt': DateTime.now().subtract(const Duration(hours: 5)),
-              }
-            },
-          ];
-          
+class _InvitationsPageState extends State<InvitationsPage>
+    with SingleTickerProviderStateMixin {
+  String token = '';
+
+  List<Map<String, dynamic>> _pendingInvitations = [];
+  //   {
+  //     'id': '1',
+  //     'sender': {
+  //       'id': '101',
+  //       'firstName': 'Sophie',
+  //       'lastName': 'Martin',
+  //       'avatar': 'https://randomuser.me/api/portraits/women/44.jpg',
+  //       'role': 'Étudiante',
+  //       'department': 'Génie Informatique',
+  //       'sentAt': DateTime.now().subtract(const Duration(hours: 2)),
+  //     }
+  //   },
+  //   {
+  //     'id': '2',
+  //     'sender': {
+  //       'id': '102',
+  //       'firstName': 'Thomas',
+  //       'lastName': 'Dubois',
+  //       'avatar': 'https://randomuser.me/api/portraits/men/32.jpg',
+  //       'role': 'Professeur',
+  //       'department': 'Mathématiques',
+  //       'sentAt': DateTime.now().subtract(const Duration(days: 1)),
+  //     }
+  //   },
+  //   {
+  //     'id': '3',
+  //     'sender': {
+  //       'id': '103',
+  //       'firstName': 'Léa',
+  //       'lastName': 'Bernard',
+  //       'avatar': 'https://randomuser.me/api/portraits/women/68.jpg',
+  //       'role': 'Étudiante',
+  //       'department': 'Génie Civil',
+  //       'sentAt': DateTime.now().subtract(const Duration(hours: 5)),
+  //     }
+  //   },
+  // ];
+
   List<Map<String, dynamic>> _acceptedInvitations = [
-            {
-              'id': '4',
-              'sender': {
-                'id': '104',
-                'firstName': 'Antoine',
-                'lastName': 'Moreau',
-                'avatar': 'https://randomuser.me/api/portraits/men/75.jpg',
-                'role': 'Étudiant',
-                'department': 'Génie Électrique',
-                'acceptedAt': DateTime.now().subtract(const Duration(days: 5)),
-              }
-            },
-            {
-              'id': '5',
-              'sender': {
-                'id': '105',
-                'firstName': 'Emma',
-                'lastName': 'Petit',
-                'avatar': 'https://randomuser.me/api/portraits/women/90.jpg',
-                'role': 'Professeure',
-                'department': 'Physique',
-                'acceptedAt': DateTime.now().subtract(const Duration(days: 7)),
-              }
-            },
-          ];
-          
+    {
+      'id': '4',
+      'sender': {
+        'id': '104',
+        'firstName': 'Antoine',
+        'lastName': 'Moreau',
+        'avatar': 'https://randomuser.me/api/portraits/men/75.jpg',
+        'role': 'Étudiant',
+        'department': 'Génie Électrique',
+        'acceptedAt': DateTime.now().subtract(const Duration(days: 5)),
+      }
+    },
+    {
+      'id': '5',
+      'sender': {
+        'id': '105',
+        'firstName': 'Emma',
+        'lastName': 'Petit',
+        'avatar': 'https://randomuser.me/api/portraits/women/90.jpg',
+        'role': 'Professeure',
+        'department': 'Physique',
+        'acceptedAt': DateTime.now().subtract(const Duration(days: 7)),
+      }
+    },
+  ];
+
   bool _isLoading = false;
   late AnimationController _animationController;
   late Animation<double> _animation;
+
+  Future<void> _initToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    token = prefs.getString('token') ?? "";
+  }
+
+  Future<void> _fetchPendingInvitations() async {
+    final response = await http.get(
+      Uri.parse('${Api.baseUrl}/connections/pending'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    print(response.statusCode);
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> responseData = json.decode(response.body);
+
+      print(responseData);
+
+      final List<dynamic> connectionsData = responseData['pendingConnections'];
+
+      setState(() {
+        _pendingInvitations = connectionsData
+            .map((post) => post as Map<String, dynamic>)
+            .toList();
+      });
+    } else {
+      print('Erreur lors de la récupération des friends');
+    }
+  }
 
   @override
   void initState() {
@@ -96,6 +128,12 @@ class _InvitationsPageState extends State<InvitationsPage> with SingleTickerProv
     );
     _animationController.forward();
     // _fetchInvitations();
+    _initialize();
+  }
+
+  void _initialize() async {
+    await _initToken();
+    await _fetchPendingInvitations();
   }
 
   @override
@@ -104,132 +142,39 @@ class _InvitationsPageState extends State<InvitationsPage> with SingleTickerProv
     super.dispose();
   }
 
-  Future<void> _fetchInvitations() async {
-    setState(() {
-      _isLoading = false;
-    });
-
-    try {
-      final response = await http.get(
-        Uri.parse('${Api.baseUrl}/invitations'),
-        // headers: {'Authorization': 'Bearer ${widget.token}'},
-      );
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        
-        // Simuler des données pour l'exemple
-        // Dans une application réelle, vous utiliseriez les données de l'API
-        setState(() {
-          _pendingInvitations = [
-            {
-              'id': '1',
-              'sender': {
-                'id': '101',
-                'firstName': 'Sophie',
-                'lastName': 'Martin',
-                'avatar': 'https://randomuser.me/api/portraits/women/44.jpg',
-                'role': 'Étudiante',
-                'department': 'Génie Informatique',
-                'sentAt': DateTime.now().subtract(const Duration(hours: 2)),
-              }
-            },
-            {
-              'id': '2',
-              'sender': {
-                'id': '102',
-                'firstName': 'Thomas',
-                'lastName': 'Dubois',
-                'avatar': 'https://randomuser.me/api/portraits/men/32.jpg',
-                'role': 'Professeur',
-                'department': 'Mathématiques',
-                'sentAt': DateTime.now().subtract(const Duration(days: 1)),
-              }
-            },
-            {
-              'id': '3',
-              'sender': {
-                'id': '103',
-                'firstName': 'Léa',
-                'lastName': 'Bernard',
-                'avatar': 'https://randomuser.me/api/portraits/women/68.jpg',
-                'role': 'Étudiante',
-                'department': 'Génie Civil',
-                'sentAt': DateTime.now().subtract(const Duration(hours: 5)),
-              }
-            },
-          ];
-          
-          _acceptedInvitations = [
-            {
-              'id': '4',
-              'sender': {
-                'id': '104',
-                'firstName': 'Antoine',
-                'lastName': 'Moreau',
-                'avatar': 'https://randomuser.me/api/portraits/men/75.jpg',
-                'role': 'Étudiant',
-                'department': 'Génie Électrique',
-                'acceptedAt': DateTime.now().subtract(const Duration(days: 5)),
-              }
-            },
-            {
-              'id': '5',
-              'sender': {
-                'id': '105',
-                'firstName': 'Emma',
-                'lastName': 'Petit',
-                'avatar': 'https://randomuser.me/api/portraits/women/90.jpg',
-                'role': 'Professeure',
-                'department': 'Physique',
-                'acceptedAt': DateTime.now().subtract(const Duration(days: 7)),
-              }
-            },
-          ];
-          
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _isLoading = false;
-        });
-        _showErrorSnackBar('Erreur lors de la récupération des invitations');
-      }
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      _showErrorSnackBar('Erreur de connexion');
-    }
-  }
-
-  Future<void> _handleInvitation(String invitationId, bool accept) async {
+  Future<void> _handleInvitation(String receiverId, bool accept) async {
     setState(() {
       // _isLoading = true;
     });
 
     try {
-      final String endpoint = accept ? 'accept' : 'decline';
-      final response = await http.post(
-        Uri.parse('${Api.baseUrl}/invitations/$invitationId/$endpoint'),
-        // headers: {'Authorization': 'Bearer ${widget.token}'},
+      final String endpoint = accept ? 'accept' : 'refuse';
+      final response = await http.put(
+        Uri.parse('${Api.baseUrl}/connections/$endpoint/$receiverId'),
+        headers: {'Authorization': 'Bearer ${token}'},
       );
 
+      print(response.statusCode);
       if (response.statusCode == 200) {
-        // Simuler la mise à jour des listes pour l'exemple
         setState(() {
-          if (accept) {
-            final invitation = _pendingInvitations.firstWhere((inv) => inv['id'] == invitationId);
-            invitation['sender']['acceptedAt'] = DateTime.now();
-            _acceptedInvitations.add(invitation);
-          }
-          _pendingInvitations.removeWhere((inv) => inv['id'] == invitationId);
-          _isLoading = false;
+          _fetchPendingInvitations();
         });
-        
+        // Simuler la mise à jour des listes pour l'exemple
+        // setState(() {
+        //   if (accept) {
+        //     final invitation = _pendingInvitations
+        //         .firstWhere((inv) => inv['id'] == invitationId);
+        //     invitation['sender']['acceptedAt'] = DateTime.now();
+        //     _acceptedInvitations.add(invitation);
+        //   }
+        //   _pendingInvitations.removeWhere((inv) => inv['id'] == invitationId);
+        //   _isLoading = false;
+        // });
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(accept ? 'Invitation acceptée' : 'Invitation refusée'),
+            content:
+                Text(accept ? 'Invitation acceptée' : 'Invitation refusée'),
             backgroundColor: accept ? Colors.green : Colors.red,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -264,13 +209,17 @@ class _InvitationsPageState extends State<InvitationsPage> with SingleTickerProv
     );
   }
 
-  String _formatTimeAgo(DateTime dateTime) {
+  String _formatTimeAgo(String dateTimeString) {
+    DateTime dateTime = DateTime.parse(dateTimeString);
+
     final Duration difference = DateTime.now().difference(dateTime);
-    
+
     if (difference.inDays > 365) {
-      return '${(difference.inDays / 365).floor()} an${(difference.inDays / 365).floor() > 1 ? 's' : ''}';
+      final years = (difference.inDays / 365).floor();
+      return '$years an${years > 1 ? 's' : ''}';
     } else if (difference.inDays > 30) {
-      return '${(difference.inDays / 30).floor()} mois';
+      final months = (difference.inDays / 30).floor();
+      return '$months mois';
     } else if (difference.inDays > 0) {
       return '${difference.inDays} jour${difference.inDays > 1 ? 's' : ''}';
     } else if (difference.inHours > 0) {
@@ -297,7 +246,6 @@ class _InvitationsPageState extends State<InvitationsPage> with SingleTickerProv
             fontWeight: FontWeight.bold,
           ),
         ),
-        
       ),
       body: _isLoading
           ? const Center(
@@ -315,7 +263,8 @@ class _InvitationsPageState extends State<InvitationsPage> with SingleTickerProv
                         child: Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
                                 color: Colors.blue[600],
                                 borderRadius: BorderRadius.circular(20),
@@ -346,8 +295,8 @@ class _InvitationsPageState extends State<InvitationsPage> with SingleTickerProv
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
                           final invitation = _pendingInvitations[index];
-                          final sender = invitation['sender'];
-                          
+                          // final sender = invitation['sender'];
+
                           return Padding(
                             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                             child: _buildPendingInvitationCard(invitation),
@@ -375,7 +324,7 @@ class _InvitationsPageState extends State<InvitationsPage> with SingleTickerProv
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
                           final invitation = _acceptedInvitations[index];
-                          
+
                           return Padding(
                             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                             child: _buildAcceptedInvitationCard(invitation),
@@ -384,7 +333,8 @@ class _InvitationsPageState extends State<InvitationsPage> with SingleTickerProv
                         childCount: _acceptedInvitations.length,
                       ),
                     ),
-                  if (_pendingInvitations.isEmpty && _acceptedInvitations.isEmpty)
+                  if (_pendingInvitations.isEmpty &&
+                      _acceptedInvitations.isEmpty)
                     SliverFillRemaining(
                       child: Center(
                         child: Column(
@@ -424,13 +374,16 @@ class _InvitationsPageState extends State<InvitationsPage> with SingleTickerProv
                 ],
               ),
             ),
-            bottomNavigationBar: Navbarwidget(isBottomNavVisible: true,currentIndex: 1,),
+      bottomNavigationBar: Navbarwidget(
+        isBottomNavVisible: true,
+        currentIndex: 1,
+      ),
     );
   }
 
   Widget _buildPendingInvitationCard(Map<String, dynamic> invitation) {
-    final sender = invitation['sender'];
-    
+    // final sender = invitation['sender'];
+
     return Card(
       elevation: 2,
       shadowColor: Colors.black26,
@@ -454,11 +407,12 @@ class _InvitationsPageState extends State<InvitationsPage> with SingleTickerProv
                 ),
               ),
               child: ClipOval(
-                child: sender['avatar'] != null
+                child: invitation['profilePhoto'] != null
                     ? Image.network(
-                        sender['avatar'],
+                        invitation['profilePhoto'],
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => const Icon(
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Icon(
                           Icons.person,
                           size: 40,
                           color: Colors.grey,
@@ -472,14 +426,14 @@ class _InvitationsPageState extends State<InvitationsPage> with SingleTickerProv
               ),
             ),
             const SizedBox(width: 12),
-            
+
             // Informations de l'utilisateur au milieu
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${sender['firstName']} ${sender['lastName']}',
+                    '${invitation['firstName']} ${invitation['lastName']}',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -489,7 +443,8 @@ class _InvitationsPageState extends State<InvitationsPage> with SingleTickerProv
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${sender['role']} · ${sender['department']}',
+                    '${invitation['role']} ',
+                    // ${sender['department']}
                     style: TextStyle(
                       fontSize: 13,
                       color: Colors.grey[600],
@@ -507,7 +462,7 @@ class _InvitationsPageState extends State<InvitationsPage> with SingleTickerProv
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        'Il y a ${_formatTimeAgo(sender['sentAt'])}',
+                        'Il y a ${_formatTimeAgo(invitation['sentAt'])}',
                         style: TextStyle(
                           fontSize: 11,
                           color: Colors.grey[500],
@@ -518,9 +473,9 @@ class _InvitationsPageState extends State<InvitationsPage> with SingleTickerProv
                 ],
               ),
             ),
-            
+
             const SizedBox(width: 8),
-            
+
             // Boutons à droite
             Column(
               mainAxisSize: MainAxisSize.min,
@@ -528,7 +483,8 @@ class _InvitationsPageState extends State<InvitationsPage> with SingleTickerProv
                 SizedBox(
                   width: 90,
                   child: ElevatedButton(
-                    onPressed: () => _handleInvitation(invitation['id'], true),
+                    onPressed: () =>
+                        _handleInvitation(invitation['userId'], true),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue[600],
                       foregroundColor: Colors.white,
@@ -536,7 +492,8 @@ class _InvitationsPageState extends State<InvitationsPage> with SingleTickerProv
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 8, horizontal: 8),
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
@@ -550,14 +507,15 @@ class _InvitationsPageState extends State<InvitationsPage> with SingleTickerProv
                 SizedBox(
                   width: 90,
                   child: OutlinedButton(
-                    onPressed: () => _handleInvitation(invitation['id'], false),
+                    onPressed: () => _handleInvitation(invitation['userId'], false),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.red[700],
                       side: BorderSide(color: Colors.red[200]!),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 8, horizontal: 8),
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
@@ -577,7 +535,7 @@ class _InvitationsPageState extends State<InvitationsPage> with SingleTickerProv
 
   Widget _buildAcceptedInvitationCard(Map<String, dynamic> invitation) {
     final sender = invitation['sender'];
-    
+
     return Card(
       elevation: 1,
       shadowColor: Colors.black12,
@@ -608,7 +566,8 @@ class _InvitationsPageState extends State<InvitationsPage> with SingleTickerProv
                       ? Image.network(
                           sender['avatar'],
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => const Icon(
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(
                             Icons.person,
                             size: 30,
                             color: Colors.grey,
@@ -645,7 +604,8 @@ class _InvitationsPageState extends State<InvitationsPage> with SingleTickerProv
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.green[50],
                   borderRadius: BorderRadius.circular(12),

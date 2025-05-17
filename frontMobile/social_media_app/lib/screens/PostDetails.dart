@@ -63,7 +63,7 @@ class _PostDetailsState extends State<PostDetails> {
   }
 
   Future<void> _fetchComments() async {
-    String url = "${Api.baseUrl}/posts/${widget.post.postId}/comments";
+    String url = "${Api.baseUrl}/comments/post/${widget.post.postId}";
 
     final pref = await SharedPreferences.getInstance();
     final token = pref.getString('token');

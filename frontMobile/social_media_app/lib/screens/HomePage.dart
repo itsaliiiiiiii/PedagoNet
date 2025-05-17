@@ -107,11 +107,12 @@ class _HomePageState extends State<HomePage> {
 
       final List<dynamic> friendData = responseData['connections'];
 
+      print('friend Data');
+      print(friendData);
 
       setState(() {
         friends =
             friendData.map((post) => post as Map<String, dynamic>).toList();
-
       });
     } else {
       print('Erreur lors de la récupération des friends');
@@ -302,8 +303,6 @@ class _HomePageState extends State<HomePage> {
               orElse: () => {},
             );
 
-            
-
             if (friend.isNotEmpty) {
               final status = friend['status'];
               if (status == 'accepted') {
@@ -315,6 +314,7 @@ class _HomePageState extends State<HomePage> {
 
             return Post(
               token: widget.token,
+              authorId: post['author']['id'],
               postId: post['id'],
               name: post['author']['firstName']!,
               role: 'Student',

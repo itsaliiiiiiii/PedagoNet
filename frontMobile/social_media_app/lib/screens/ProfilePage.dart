@@ -607,6 +607,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ],
               ),
               child: Post(
+                authorId: '',
                 relation: '',
                 token: widget.token,
                   postId: post?['id'],

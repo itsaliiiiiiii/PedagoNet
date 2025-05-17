@@ -14,7 +14,6 @@ router.post('/request', authenticateToken, async (req, res) => {
     try {
         const { receiverId } = req.body;
 
-        // Check if connection already exists
         const existingConnections = await getConnections(req.user.id_user.toString());
         if (existingConnections.some(conn => conn.userId === receiverId)) {
             return res.status(400).json({
