@@ -1,0 +1,105 @@
+const userRepository = require('../repositories/user.repository');
+const fs = require('fs').promises;
+const path = require('path');
+
+const getUserProfile = async (userId) => {
+    try {
+        const user = await userRepository.findById(userId);
+        
+        if (!user) {
+            return { success: false, message: 'User not found' };
+        }
+
+        // Remove sensitive information
+        const { password, ...userProfile } = user;
+        
+        // Add photo URL if exists
+        if (userProfile.profilePhoto) {
+            userProfile.profilePhotoUrl = `/upload/${userProfile.profilePhoto.filename}`;
+        }
+        
+        return {
+            success: true,
+            profile: userProfile
+        };
+    } catch (error) {
+        console.error('Get profile error:', error);
+        return { success: false, message: 'Failed to get user profile' };
+    }
+};
+
+const updateUserProfile = async (userId, updateData) => {
+    try {
+        // Prevent updating sensitive fields
+        const { password, email, role, id_user, ...allowedUpdates } = updateData;
+        
+        const updatedUser = await userRepository.update(userId, allowedUpdates);
+        
+        if (!updatedUser) {
+            return { success: false, message: 'Failed to update profile' };
+        }
+
+        // Remove sensitive information from response
+        const { password: _, ...userProfile } = updatedUser;
+        
+        return {
+            success: true,
+            message: 'Profile updated successfully',
+            profile: userProfile
+        };
+    } catch (error) {
+        console.error('Update profile error:', error);
+        return { success: false, message: 'Failed to update profile' };
+    }
+};
+
+const updateProfilePhoto = async (userId, file) => {
+    try {
+        // Get old profile photo if exists
+        const user = await userRepository.findById(userId);
+        const oldPhoto = user.profilePhoto;
+
+        // Create photo object similar to post attachments
+        const photoData = {
+            filename: file.filename,
+            originalName: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size
+        };
+
+        // Update profile photo in database
+        const updatedUser = await userRepository.update(userId, {
+            profilePhoto: photoData
+        });
+
+        if (!updatedUser) {
+            return { success: false, message: 'Failed to update profile photo' };
+        }
+
+        // Delete old photo if exists
+        if (oldPhoto && oldPhoto.filename) {
+            const oldPhotoPath = path.join(__dirname, '../../upload', oldPhoto.filename);
+            try {
+                await fs.unlink(oldPhotoPath);
+            } catch (error) {
+                console.error('Error deleting old profile photo:', error);
+            }
+        }
+
+        return {
+            success: true,
+            message: 'Profile photo updated successfully',
+            profilePhoto: photoData,
+            profilePhotoUrl: `/upload/${file.filename}`
+        };
+    } catch (error) {
+        console.error('Update profile photo error:', error);
+        return { success: false, message: 'Failed to update profile photo' };
+    }
+};
+
+module.exports = {
+    getUserProfile,
+    updateUserProfile,
+    updateProfilePhoto
+};

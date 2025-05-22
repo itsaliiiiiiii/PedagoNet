@@ -1,0 +1,2 @@
+C:/Users/souha/Downloads/PedagoNet-anas/PedagoNet-anas/frontMobile/social_media_app/android/app/.cxx/Debug/3722y5w5/x86_64/CMakeFiles/edit_cache.dir
+C:/Users/souha/Downloads/PedagoNet-anas/PedagoNet-anas/frontMobile/social_media_app/android/app/.cxx/Debug/3722y5w5/x86_64/CMakeFiles/rebuild_cache.dir
