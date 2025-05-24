@@ -13,7 +13,6 @@ const profileRoutes = require('./src/routes/profile.routes');
 const commentRoutes = require('./src/routes/comment.routes');
 const cookieParser = require('cookie-parser');
 require('dotenv').config();
-const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -22,8 +21,6 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(cookieParser());
 
-// Sert les fichiers statiques du dossier "upload"
-app.use('/uploads', express.static(path.join(__dirname, 'upload')));
 
 // Connect to database
 connectDatabase();
@@ -52,7 +49,7 @@ app.use('/comments', commentsRoutes);
 app.use('/tasks', taskRoutes);
 app.use('/comments', commentRoutes);
 
-app.use('/upload', express.static(path.join(__dirname, 'upload')));
+app.use('/uploads', express.static(path.join(__dirname, 'upload')));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

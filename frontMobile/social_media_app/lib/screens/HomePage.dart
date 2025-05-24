@@ -2,8 +2,10 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:social_media_app/core/Api.dart';
+import 'package:social_media_app/provider/PostProvider.dart';
 import 'package:social_media_app/screens/CreatePostPage.dart';
 import 'package:social_media_app/screens/FriendPage.dart';
 import 'package:social_media_app/screens/InvitationsPage.dart';
@@ -13,6 +15,23 @@ import 'package:social_media_app/screens/ProfilePage.dart';
 import 'package:social_media_app/widgets/NavbarWidget.dart';
 import 'package:social_media_app/widgets/homePage/Post/Post.dart';
 import 'package:http/http.dart' as http;
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+
+// Gestionnaire de cache global pour toute l'application
+class AppCacheManager {
+  static const key = 'socialAppCache';
+
+  static final CacheManager instance = CacheManager(
+    Config(
+      key,
+      stalePeriod: const Duration(days: 7),
+      maxNrOfCacheObjects: 200,
+      repo: JsonCacheInfoRepository(databaseName: key),
+      fileService: HttpFileService(),
+    ),
+  );
+}
 
 class HomePage extends StatefulWidget {
   String token = "";
@@ -21,19 +40,31 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage>
+    with AutomaticKeepAliveClientMixin {
   List<Map<String, dynamic>> posts = [];
   List<Map<String, dynamic>> friends = [];
+  Map<String, dynamic> profile = Map();
 
   bool _isBottomNavVisible = true;
   ScrollController _scrollController = ScrollController();
   int _selectedIndex = 0;
+  bool _isLoading = true;
+  bool _isRefreshing = false;
+
+  @override
+  bool get wantKeepAlive => true; // Garde l'état de la page en vie
 
   @override
   void initState() {
     super.initState();
     _initialize();
     _setupScrollController();
+
+    // Précharger les images visibles
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _precacheVisibleImages();
+    });
   }
 
   @override
@@ -44,6 +75,7 @@ class _HomePageState extends State<HomePage> {
 
   void _setupScrollController() {
     _scrollController.addListener(() {
+      // Gestion de la visibilité de la barre de navigation
       if (_scrollController.position.userScrollDirection ==
           ScrollDirection.reverse) {
         if (_isBottomNavVisible) {
@@ -64,10 +96,67 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  // Précharge les images des posts visibles
+  void _precacheVisibleImages() {
+    for (var post in posts) {
+      if (post['attachments'] != null &&
+          post['attachments'].isNotEmpty &&
+          post['attachments'][0]['filename'] != null) {
+        final filename = post['attachments'][0]['filename'];
+        if (filename.isNotEmpty) {
+          final imageUrl = '${Api.baseUrl}/uploads/$filename';
+          final cacheKey = 'post_${post['id']}_$filename';
+
+          // Précharger l'image
+          AppCacheManager.instance.getSingleFile(imageUrl, key: cacheKey);
+        }
+      }
+    }
+  }
+
   Future<void> _initialize() async {
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
+
     await _initToken();
     await _fetchPosts();
+    final postProvider = Provider.of<PostProvider>(context, listen: false);
+    for (var post in posts) {
+      postProvider.initPost(
+        post['id'],
+        liked: post['hasLiked'],
+        count: post['likesCount'],
+      );
+    }
     await _fetchFriends();
+    await _fetchProfile();
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+
+      // Précharger les images après le chargement des données
+      _precacheVisibleImages();
+    }
+  }
+
+  Future<void> _refresh() async {
+    if (_isRefreshing) return;
+
+    setState(() {
+      _isRefreshing = true;
+    });
+
+    await _fetchPosts();
+    await _fetchFriends();
+
+    setState(() {
+      _isRefreshing = false;
+    });
   }
 
   Future<void> _initToken() async {
@@ -75,52 +164,90 @@ class _HomePageState extends State<HomePage> {
     widget.token = prefs.getString('token') ?? "";
   }
 
+  Future<void> _fetchProfile() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${Api.baseUrl}/profile/me'),
+        headers: {'Authorization': 'Bearer ${widget.token}'},
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+
+        final Map<String, dynamic> profileData = responseData['profile'];
+
+        if (mounted) {
+          setState(() {
+            print(profileData);
+            profile = profileData;
+          });
+        }
+      } else {
+        print(
+            'Erreur lors de la récupération des posts: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Exception lors de la récupération des posts: $e');
+    }
+  }
+
   Future<void> _fetchPosts() async {
-    final response = await http.get(
-      Uri.parse('${Api.baseUrl}/posts'),
-      headers: {'Authorization': 'Bearer ${widget.token}'},
-    );
+    try {
+      final response = await http.get(
+        Uri.parse('${Api.baseUrl}/posts'),
+        headers: {'Authorization': 'Bearer ${widget.token}'},
+      );
 
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> responseData = json.decode(response.body);
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        final List<dynamic> postData = responseData['posts'];
 
-      print(responseData);
-
-      final List<dynamic> postData = responseData['posts'];
-
-      setState(() {
-        posts = postData.map((post) => post as Map<String, dynamic>).toList();
-      });
-    } else {
-      print('Erreur lors de la récupération des posts');
+        if (mounted) {
+          setState(() {
+            posts =
+                postData.map((post) => post as Map<String, dynamic>).toList();
+          });
+        }
+      } else {
+        print(
+            'Erreur lors de la récupération des posts: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Exception lors de la récupération des posts: $e');
     }
   }
 
   Future<void> _fetchFriends() async {
-    final response = await http.get(
-      Uri.parse('${Api.baseUrl}/connections'),
-      headers: {'Authorization': 'Bearer ${widget.token}'},
-    );
+    try {
+      final response = await http.get(
+        Uri.parse('${Api.baseUrl}/connections'),
+        headers: {'Authorization': 'Bearer ${widget.token}'},
+      );
 
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> responseData = json.decode(response.body);
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        final List<dynamic> friendData = responseData['connections'];
 
-      final List<dynamic> friendData = responseData['connections'];
-
-      print('friend Data');
-      print(friendData);
-
-      setState(() {
-        friends =
-            friendData.map((post) => post as Map<String, dynamic>).toList();
-      });
-    } else {
-      print('Erreur lors de la récupération des friends');
+        if (mounted) {
+          setState(() {
+            friends = friendData
+                .map((friend) => friend as Map<String, dynamic>)
+                .toList();
+          });
+        }
+      } else {
+        print(
+            'Erreur lors de la récupération des amis: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Exception lors de la récupération des amis: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Nécessaire pour AutomaticKeepAliveClientMixin
+
     return Scaffold(
       drawer: Drawer(
         width: 280,
@@ -156,14 +283,29 @@ class _HomePageState extends State<HomePage> {
                 onTap: () {
                   Scaffold.of(context).openDrawer();
                 },
-                child: const CircleAvatar(
-                  child: Icon(
-                    Icons.person,
-                    size: 30,
-                    color: Color.fromARGB(255, 59, 58, 58),
+                child: Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
                   ),
-                  backgroundColor: Color.fromARGB(255, 137, 136, 136),
-                  radius: 20,
+                  child: ClipOval(
+                    child: CachedNetworkImage(
+                      imageUrl:
+                          '${Api.baseUrl}/uploads/${profile['profilePhotoFilename']}' ??
+                              'https://example.com/default_profile.png',
+                      cacheManager: AppCacheManager.instance,
+                      // placeholder: (context, url) =>
+                      //     CircularProgressIndicator(),
+                      errorWidget: (context, url, error) => Icon(
+                        Icons.person,
+                        size: 25,
+                        color: Color.fromARGB(255, 59, 58, 58),
+                      ),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -229,107 +371,153 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
-      body: ListView(
-        controller: _scrollController,
-        padding: const EdgeInsets.all(10),
-        children: [
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => CreatePostPage(token: widget.token),
-                ),
-              ).then((value) {
-                if (value == true) {
-                  _fetchPosts();
-                }
-              });
-            },
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 5,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  const CircleAvatar(
-                    backgroundColor: Color.fromARGB(255, 137, 136, 136),
-                    radius: 20,
-                    child: Icon(
-                      Icons.person,
-                      size: 30,
-                      color: Color.fromARGB(255, 59, 58, 58),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Quoi de neuf?',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 16,
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _refresh,
+              child: ListView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.all(10),
+                itemCount: posts.length + 1,
+                cacheExtent:
+                    3000, // Augmente la zone de cache pour éviter le rechargement
+                addAutomaticKeepAlives: true, // Garde les éléments en vie
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    // Le premier élément est toujours le widget "Quoi de neuf?"
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                CreatePostPage(token: widget.token),
+                          ),
+                        ).then((value) {
+                          if (value == true) {
+                            _fetchPosts();
+                          }
+                        });
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 5,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            // const CircleAvatar(
+                            //   backgroundColor:
+                            //       Color.fromARGB(255, 137, 136, 136),
+                            //   radius: 20,
+                            //   child: Icon(
+                            //     Icons.person,
+                            //     size: 30,
+                            //     color: Color.fromARGB(255, 59, 58, 58),
+                            //   ),
+                            // ),
+                            Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border:
+                                    Border.all(color: Colors.white, width: 2),
+                              ),
+                              child: ClipOval(
+                                child: CachedNetworkImage(
+                                  imageUrl:
+                                      '${Api.baseUrl}/uploads/${profile['profilePhotoFilename']}' ??
+                                          'https://example.com/default_profile.png',
+                                  cacheManager: AppCacheManager.instance,
+                                  // placeholder: (context, url) =>
+                                  //     CircularProgressIndicator(),
+                                  errorWidget: (context, url, error) => Icon(
+                                    Icons.person,
+                                    size: 25,
+                                    color: Color.fromARGB(255, 59, 58, 58),
+                                  ),
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Quoi de neuf?',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              Icons.photo_library,
+                              color: Colors.blue[400],
+                            ),
+                            const SizedBox(width: 12),
+                            Icon(
+                              Icons.attach_file,
+                              color: Colors.green[400],
+                            ),
+                          ],
+                        ),
                       ),
+                    );
+                  }
+
+                  // Pour les autres éléments, ce sont des posts
+                  final postIndex = index - 1;
+                  final post = posts[postIndex];
+                  final String authorId = post['author']['id'];
+                  String relation = 'foreign';
+
+                  final friend = friends.firstWhere(
+                    (f) => f['userId'] == authorId,
+                    orElse: () => {},
+                  );
+
+                  if (friend.isNotEmpty) {
+                    final status = friend['status'];
+                    if (status == 'accepted') {
+                      relation = 'amis';
+                    } else if (status == 'sent') {
+                      relation = 'send';
+                    }
+                  }
+
+                  return RepaintBoundary(
+                    child: Post(
+                      key: ValueKey('post_${post['id']}'),
+                      token: widget.token,
+                      authorId: post['author']['id'],
+                      postId: post['id'],
+                      name: post['author']['firstName']!,
+                      role: 'Student',
+                      time: post['createdAt']['year']['low'].toString(),
+                      description: post['content'],
+                      filename: post['attachments'].isNotEmpty
+                          ? post['attachments'][0]['filename']
+                          : '',
+                      authorImage: post['author']['profilePhotoUrl'],
+                      likes: post['likesCount'],
+                      isLiked: post['hasLiked'],
+                      relation: relation,
                     ),
-                  ),
-                  Icon(
-                    Icons.photo_library,
-                    color: Colors.blue[400],
-                  ),
-                  const SizedBox(width: 12),
-                  Icon(
-                    Icons.attach_file,
-                    color: Colors.green[400],
-                  ),
-                ],
+                  );
+                },
               ),
             ),
-          ),
-          ...posts.map((post) {
-            final String authorId = post['author']['id'];
-            String relation = 'foreign';
-
-            final friend = friends.firstWhere(
-              (f) => f['userId'] == authorId,
-              orElse: () => {},
-            );
-
-            if (friend.isNotEmpty) {
-              final status = friend['status'];
-              if (status == 'accepted') {
-                relation = 'amis';
-              } else if (status == 'sent') {
-                relation = 'send';
-              }
-            }
-
-            return Post(
-              token: widget.token,
-              authorId: post['author']['id'],
-              postId: post['id'],
-              name: post['author']['firstName']!,
-              role: 'Student',
-              time: post['createdAt']['year']['low'].toString(),
-              description: post['content'],
-              filename: post['attachments'].isNotEmpty
-                  ? post['attachments'][0]['filename']
-                  : '',
-              likes: post['likesCount'],
-              isLiked: false,
-              relation: relation,
-            );
-          }),
-        ],
-      ),
       bottomNavigationBar: Navbarwidget(
         isBottomNavVisible: _isBottomNavVisible,
         currentIndex: 0,
@@ -356,22 +544,28 @@ class _HomePageState extends State<HomePage> {
                   border: Border.all(color: Colors.white, width: 2),
                 ),
                 child: ClipOval(
-                    child: CircleAvatar(
-                  child: Icon(Icons.person),
-                )
-                    // Image.network(
-                    //   'https://media.licdn.com/dms/image/v2/D5622AQHC6U0LmDdu3g/feedshare-shrink_800/B56ZYqUWeIH0Ak-/0/1744466701049?e=1747267200&v=beta&t=5cVOs_2GPFYZUb42Gl46DPyji4j9gGyxlY660DAEttY',
-                    //   fit: BoxFit.cover,
-                    // ),
+                  child: CachedNetworkImage(
+                    imageUrl:
+                        '${Api.baseUrl}/uploads/${profile['profilePhotoFilename']}' ??
+                            'https://example.com/default_profile.png',
+                    cacheManager: AppCacheManager.instance,
+                    // placeholder: (context, url) => CircularProgressIndicator(),
+                    errorWidget: (context, url, error) => Icon(
+                      Icons.person,
+                      size: 30,
+                      color: Color.fromARGB(255, 59, 58, 58),
                     ),
+                    fit: BoxFit.cover,
+                  ),
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Anas Zerhoun',
+                    Text(
+                      '${(profile['firstName'] ?? '')} ${(profile['lastName'] ?? '')}',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 18,
@@ -438,7 +632,6 @@ class _HomePageState extends State<HomePage> {
           ),
           onTap: () {
             Navigator.pop(context);
-            // Navigate to home page if not already there
           },
         ),
         ListTile(
@@ -499,6 +692,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildClassroomSection(BuildContext context) {
+    // Code inchangé
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -525,7 +719,6 @@ class _HomePageState extends State<HomePage> {
           ),
           onTap: () {
             Navigator.pop(context);
-            // Navigate to classroom page
           },
         ),
       ],
@@ -533,6 +726,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildAccountSection(BuildContext context) {
+    // Code inchangé
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -578,7 +772,6 @@ class _HomePageState extends State<HomePage> {
           ),
           onTap: () {
             Navigator.pop(context);
-            // Navigate to settings page
           },
         ),
       ],
@@ -586,6 +779,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildFooter(BuildContext context) {
+    // Code inchangé
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
       decoration: BoxDecoration(
@@ -601,7 +795,6 @@ class _HomePageState extends State<HomePage> {
       child: InkWell(
         onTap: () {
           Navigator.pop(context);
-          // Handle logout
           showDialog(
             context: context,
             builder: (BuildContext context) {
@@ -620,6 +813,7 @@ class _HomePageState extends State<HomePage> {
                     onPressed: () async {
                       final prefs = await SharedPreferences.getInstance();
                       prefs.remove('token');
+                      Provider.of<PostProvider>(context, listen: false).reset();
                       Navigator.push(
                         context,
                         MaterialPageRoute(

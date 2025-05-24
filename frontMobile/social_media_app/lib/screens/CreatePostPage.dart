@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:social_media_app/core/Api.dart';
+import 'package:http_parser/http_parser.dart';
 
 class CreatePostPage extends StatefulWidget {
   final String token;
@@ -73,7 +74,6 @@ class _CreatePostPageState extends State<CreatePostPage> {
     });
 
     try {
-      
       var request = http.MultipartRequest(
         'POST',
         Uri.parse('${Api.baseUrl}/posts'),
@@ -86,12 +86,12 @@ class _CreatePostPageState extends State<CreatePostPage> {
       request.fields['content'] = _postController.text;
       request.fields['visibility'] = 'public';
 
-
       // Ajouter l'image si elle existe
       if (_selectedImage != null) {
         var file = await http.MultipartFile.fromPath(
-          'attachments', 
+          'attachments',
           _selectedImage!.path,
+          contentType: MediaType('image', 'jpeg'),
         );
         request.files.add(file);
       }
