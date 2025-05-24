@@ -6,6 +6,8 @@ import 'dart:convert';
 import 'package:social_media_app/screens/HomePage.dart';
 
 class LoginPage extends StatelessWidget {
+  const LoginPage({super.key});
+
   // Méthode pour effectuer la requête
   Future<void> _login(BuildContext context) async {
     final url = Uri.parse(

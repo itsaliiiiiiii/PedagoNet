@@ -218,8 +218,8 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  Future<dynamic> fetchPosts(String id_user) async {
-    final url = '${Api.baseUrl}/posts/user/$id_user';
+  Future<dynamic> fetchPosts(String idUser) async {
+    final url = '${Api.baseUrl}/posts/user/$idUser';
 
     try {
       final response = await http.get(
@@ -247,13 +247,13 @@ class _ProfilePageState extends State<ProfilePage> {
       final profileData = await fetchProfile();
 
       if (profileData != null && profileData['profile'] != null) {
-        final postData = await fetchPosts(profileData['profile']['id_user']);
+        // final postData = await fetchPosts(profileData['profile']['id_user']);
 
 
         if (mounted) {
           setState(() {
             profile = profileData['profile'];
-            posts = postData['posts'];
+            // posts = postData['posts'];
           });
         }
       }
@@ -301,7 +301,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildProfileHeader() {
-    return Container(
+    return SizedBox(
       height: 220,
       child: Stack(
         clipBehavior: Clip.none,

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:social_media_app/screens/auth/loginPage2.dart';
 import 'HomePage.dart';
-import 'LoginPage.dart';
 
 class EntryPage extends StatefulWidget {
+  const EntryPage({super.key});
+
   @override
   _EntryPageState createState() => _EntryPageState();
 }

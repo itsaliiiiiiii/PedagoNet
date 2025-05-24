@@ -11,7 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class PostDetails extends StatefulWidget {
   final PostModel post;
 
-  PostDetails({super.key, required this.post});
+  const PostDetails({super.key, required this.post});
 
   @override
   State<PostDetails> createState() => _PostDetailsState();
@@ -179,8 +179,8 @@ class _PostDetailsState extends State<PostDetails> {
                     Row(
                       children: [
                         CircleAvatar(
-                          child: Icon(Icons.person, color: Colors.white),
                           backgroundColor: Colors.grey,
+                          child: Icon(Icons.person, color: Colors.white),
                         ),
                         SizedBox(width: 10),
                         Column(
@@ -296,8 +296,8 @@ class _PostDetailsState extends State<PostDetails> {
                             padding:
                                 const EdgeInsets.symmetric(horizontal: 4.0),
                             child: CircleAvatar(
-                              child: Icon(Icons.person, color: Colors.white),
                               backgroundColor: Colors.grey,
+                              child: Icon(Icons.person, color: Colors.white),
                             ),
                           );
                         },
@@ -347,8 +347,8 @@ class _PostDetailsState extends State<PostDetails> {
                 child: Row(
                   children: [
                     CircleAvatar(
-                      child: Icon(Icons.person, color: Colors.white),
                       backgroundColor: Colors.grey,
+                      child: Icon(Icons.person, color: Colors.white),
                     ),
                     SizedBox(width: 6),
                     Expanded(

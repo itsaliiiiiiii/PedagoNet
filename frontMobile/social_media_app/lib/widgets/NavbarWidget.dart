@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:social_media_app/screens/FriendPage.dart';
 import 'package:social_media_app/screens/HomePage.dart';
 import 'package:social_media_app/screens/InvitationsPage.dart';
 import 'package:social_media_app/screens/NotificationsPage.dart';

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:social_media_app/core/Api.dart';
 import 'package:social_media_app/provider/PostProvider.dart';
+import 'package:social_media_app/screens/classroom/ClassroomPage.dart';
 import 'package:social_media_app/screens/CreatePostPage.dart';
 import 'package:social_media_app/screens/FriendPage.dart';
 import 'package:social_media_app/screens/InvitationsPage.dart';
@@ -18,7 +19,6 @@ import 'package:http/http.dart' as http;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
-// Gestionnaire de cache global pour toute l'application
 class AppCacheManager {
   static const key = 'socialAppCache';
 
@@ -36,6 +36,8 @@ class AppCacheManager {
 class HomePage extends StatefulWidget {
   String token = "";
 
+  HomePage({super.key});
+
   @override
   State<HomePage> createState() => _HomePageState();
 }
@@ -44,11 +46,11 @@ class _HomePageState extends State<HomePage>
     with AutomaticKeepAliveClientMixin {
   List<Map<String, dynamic>> posts = [];
   List<Map<String, dynamic>> friends = [];
-  Map<String, dynamic> profile = Map();
+  Map<String, dynamic> profile = {};
 
   bool _isBottomNavVisible = true;
-  ScrollController _scrollController = ScrollController();
-  int _selectedIndex = 0;
+  final ScrollController _scrollController = ScrollController();
+  final int _selectedIndex = 0;
   bool _isLoading = true;
   bool _isRefreshing = false;
 
@@ -175,6 +177,11 @@ class _HomePageState extends State<HomePage>
         final Map<String, dynamic> responseData = json.decode(response.body);
 
         final Map<String, dynamic> profileData = responseData['profile'];
+
+        final String role = profileData['role'];
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user_role', role);
 
         if (mounted) {
           setState(() {
@@ -719,6 +726,12 @@ class _HomePageState extends State<HomePage>
           ),
           onTap: () {
             Navigator.pop(context);
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ClassroomPage(token: widget.token),
+              ),
+            );
           },
         ),
       ],

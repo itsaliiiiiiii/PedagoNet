@@ -41,7 +41,7 @@ class Post extends StatefulWidget {
   final String relation;
 
   Post({
-    Key? key,
+    super.key,
     required this.token,
     required this.authorId,
     required this.postId,
@@ -54,7 +54,7 @@ class Post extends StatefulWidget {
     required this.likes,
     required this.relation,
     required this.isLiked,
-  }) : super(key: key);
+  });
 
   @override
   State<Post> createState() => _PostState();

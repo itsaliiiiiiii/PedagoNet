@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:social_media_app/core/Api.dart';
 

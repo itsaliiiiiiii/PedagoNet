@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:social_media_app/widgets/NavbarWidget.dart';
 
 class InvitationsPage extends StatefulWidget {
-  InvitationsPage({Key? key}) : super(key: key);
+  const InvitationsPage({super.key});
 
   @override
   State<InvitationsPage> createState() => _InvitationsPageState();
@@ -55,7 +55,7 @@ class _InvitationsPageState extends State<InvitationsPage>
   //   },
   // ];
 
-  List<Map<String, dynamic>> _acceptedInvitations = [
+  final List<Map<String, dynamic>> _acceptedInvitations = [
     {
       'id': '4',
       'sender': {
@@ -151,7 +151,7 @@ class _InvitationsPageState extends State<InvitationsPage>
       final String endpoint = accept ? 'accept' : 'refuse';
       final response = await http.put(
         Uri.parse('${Api.baseUrl}/connections/$endpoint/$receiverId'),
-        headers: {'Authorization': 'Bearer ${token}'},
+        headers: {'Authorization': 'Bearer $token'},
       );
 
       print(response.statusCode);

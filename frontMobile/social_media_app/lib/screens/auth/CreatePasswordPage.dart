@@ -5,7 +5,7 @@ import 'package:social_media_app/services/auth_service.dart';
 class PasswordPage extends StatefulWidget {
   final String code;
   final String mail;
-  const PasswordPage({Key? key, required this.code,required this.mail}) : super(key: key);
+  const PasswordPage({super.key, required this.code,required this.mail});
 
   @override
   _PasswordPageState createState() => _PasswordPageState();

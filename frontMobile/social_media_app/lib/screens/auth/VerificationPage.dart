@@ -7,7 +7,7 @@ import 'package:social_media_app/screens/auth/LoginPage2.dart';
 class VerificationPage extends StatefulWidget {
   final String email;
 
-  const VerificationPage({Key? key, required this.email}) : super(key: key);
+  const VerificationPage({super.key, required this.email});
 
   @override
   _VerificationPageState createState() => _VerificationPageState();

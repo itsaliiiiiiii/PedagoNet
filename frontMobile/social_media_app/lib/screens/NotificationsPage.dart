@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:social_media_app/widgets/NavbarWidget.dart';
 
 class NotificationsPage extends StatefulWidget {
-  const NotificationsPage({Key? key}) : super(key: key);
+  const NotificationsPage({super.key});
 
   @override
   State<NotificationsPage> createState() => _NotificationsPageState();
@@ -11,7 +11,7 @@ class NotificationsPage extends StatefulWidget {
 class _NotificationsPageState extends State<NotificationsPage> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _animation;
-  bool _isLoading = false;
+  final bool _isLoading = false;
   
   // Données statiques pour les notifications
   final List<Map<String, dynamic>> _notifications = [

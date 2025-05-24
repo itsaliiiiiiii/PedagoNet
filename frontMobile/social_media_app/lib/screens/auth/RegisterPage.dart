@@ -4,7 +4,7 @@ import 'package:social_media_app/screens/auth/LoginPage2.dart';
 import 'package:social_media_app/screens/auth/VerificationPage.dart';
 
 class RegisterPage extends StatefulWidget {
-  const RegisterPage({Key? key}) : super(key: key);
+  const RegisterPage({super.key});
 
   @override
   _RegisterPageState createState() => _RegisterPageState();
@@ -67,7 +67,7 @@ class _RegisterPageState extends State<RegisterPage> {
           height: MediaQuery.of(context).size.height - kToolbarHeight,
           child: Center(
             child: SingleChildScrollView(
-              child: Container(
+              child: SizedBox(
                 width: 350,
                 child: Form(
                   key: _formKey,

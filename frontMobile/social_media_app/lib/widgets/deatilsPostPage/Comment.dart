@@ -28,13 +28,13 @@ class Comment extends StatelessWidget {
                 spacing: 10,
                 children: [
                   CircleAvatar(
+                    backgroundColor: const Color.fromARGB(255, 137, 136, 136),
+                    radius: 20,
                     child: Icon(
                       Icons.person,
                       size: 30,
                       color: const Color.fromARGB(255, 59, 58, 58),
                     ),
-                    backgroundColor: const Color.fromARGB(255, 137, 136, 136),
-                    radius: 20,
                   ),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
