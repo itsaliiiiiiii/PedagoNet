@@ -59,42 +59,54 @@ const updateProfilePhoto = async (userId, file) => {
         const user = await userRepository.findById(userId);
         const oldPhoto = user.profilePhoto;
 
-        // Create photo object similar to post attachments
-        const photoData = {
-            filename: file.filename,
-            originalName: file.originalname,
-            mimetype: file.mimetype,
-            size: file.size
-        };
-
-        // Update profile photo in database
         const updatedUser = await userRepository.update(userId, {
-            profilePhoto: photoData
+            profilePhotoFilename: file.filename,
+            profilePhotoOriginalName: file.originalname,
+            profilePhotoMimeType: file.mimetype,
+            profilePhotoSize: file.size,
         });
 
         if (!updatedUser) {
-            return { success: false, message: 'Failed to update profile photo' };
+            return { success: false, message: "Failed to update profile photo" };
         }
 
         // Delete old photo if exists
         if (oldPhoto && oldPhoto.filename) {
-            const oldPhotoPath = path.join(__dirname, '../../upload', oldPhoto.filename);
+            const oldPhotoPath = path.join(
+                __dirname,
+                "../../upload",
+                oldPhoto.filename
+            );
             try {
                 await fs.unlink(oldPhotoPath);
             } catch (error) {
-                console.error('Error deleting old profile photo:', error);
+                console.error("Error deleting old profile photo:", error);
             }
         }
 
+        const photoData = {
+            filename: file.filename,
+            originalName: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size,
+        };
+
         return {
             success: true,
-            message: 'Profile photo updated successfully',
+            message: "Profile photo updated successfully",
             profilePhoto: photoData,
-            profilePhotoUrl: `/upload/${file.filename}`
+            profilePhotoUrl: `/upload/${file.filename}`,
+        };
+
+        return {
+            success: true,
+            message: "Profile photo updated successfully",
+            profilePhoto: photoData,
+            profilePhotoUrl: `/upload/${file.filename}`,
         };
     } catch (error) {
-        console.error('Update profile photo error:', error);
-        return { success: false, message: 'Failed to update profile photo' };
+        console.error("Update profile photo error:", error);
+        return { success: false, message: "Failed to update profile photo" };
     }
 };
 

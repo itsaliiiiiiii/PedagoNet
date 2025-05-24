@@ -132,8 +132,10 @@ class PostRepository extends BaseRepository {
             WHERE p.visibility = 'public' OR $targetUserId = $viewerId OR $isViewerConnected = true
             OPTIONAL MATCH (p)<-[like:LIKE]-()
             OPTIONAL MATCH (viewer:User {id_user: $viewerId})-[userLike:LIKE]->(p)
-            RETURN p, author, COUNT(like) as likesCount,
-                   CASE WHEN userLike IS NOT NULL THEN true ELSE false END as hasLiked
+            OPTIONAL MATCH (p)-[:HAS_ATTACHMENT]->(a:Attachment)
+            WITH p, author, COUNT(like) as likesCount, COLLECT(a) as attachments,
+                 CASE WHEN userLike IS NOT NULL THEN true ELSE false END as hasLiked
+            RETURN p, author, likesCount, attachments, hasLiked
             ORDER BY p.createdAt DESC`;
     
         const records = await this.executeQuery(query, { 
@@ -146,7 +148,8 @@ class PostRepository extends BaseRepository {
             post: {
                 ...record.get('p').properties,
                 likesCount: record.get('likesCount').toNumber(),
-                hasLiked: record.get('hasLiked')
+                hasLiked: record.get('hasLiked'),
+                attachments: record.get('attachments').map(att => att.properties)
             },
             author: record.get('author').properties
         }));
