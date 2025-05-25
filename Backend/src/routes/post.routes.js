@@ -2,18 +2,44 @@ const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth.middleware');
 const upload = require('../config/upload');
-const { createPost, getPosts, getPostById, updatePost, deletePost, markPostAsSeen, getSeenPosts } = require('../services/post.service');
-const { getConnections } = require('../services/neo4j.service');
+const { 
+    createPost, 
+    getPosts, 
+    getPostById, 
+    updatePost, 
+    deletePost,
+    markPostAsSeen,
+    getSeenPosts,
+    getUserPosts,
+    toggleLike,
+    getPostLikedUsers  // Add this import
+} = require('../services/post.service');
+const {
+    addComment,
+    getComments,
+    updateComment,
+    deleteComment,
+    addReply,
+    getReplies,
+    toggleLike: toggleCommentLike
+} = require('../services/comment.service');
+const { getConnections } = require('../services/connection.service');
 
 // Create a new post with file uploads
 router.post('/', authenticateToken, upload.array('attachments', 5), async (req, res) => {
     try {
-        const attachments = req.files ? req.files.map(file => ({
-            filename: file.filename,
-            originalName: file.originalname,
-            mimetype: file.mimetype,
-            size: file.size
-        })) : [];
+        // Initialize attachments as empty array
+        const attachments = [];
+        
+        // Only process attachments if files were uploaded
+        if (req.files && req.files.length > 0) {
+            attachments.push(...req.files.map(file => ({
+                filename: file.filename,
+                originalName: file.originalname,
+                mimetype: file.mimetype,
+                size: file.size
+            })));
+        }
 
         const result = await createPost(
             req.user.id_user,
@@ -22,8 +48,11 @@ router.post('/', authenticateToken, upload.array('attachments', 5), async (req, 
             attachments
         );
 
-        if (!result.success) {
-            return res.status(500).json(result);
+        if (!result) {  // Check for null result first
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to create post'
+            });
         }
 
         res.status(201).json({
@@ -271,6 +300,200 @@ router.get('/:id', authenticateToken, async (req, res) => {
         });
     } catch (error) {
         console.error('Post retrieval error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Get all posts by user ID
+router.get('/user/:userId', authenticateToken, async (req, res) => {
+    try {
+        const targetUserId = req.params.userId;
+        const viewerId = req.user.id_user;
+        const isViewerConnected = await isConnected(targetUserId, viewerId);
+        
+        const result = await getUserPosts(targetUserId, viewerId, isViewerConnected);
+
+        if (!result.success) {
+            return res.status(500).json(result);
+        }
+
+        res.json({
+            success: true,
+            posts: result.posts
+        });
+    } catch (error) {
+        console.error('User posts retrieval error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Get users who liked a post
+router.get('/:id/likes', authenticateToken, async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = parseInt(req.query.skip) || 0;
+        
+        const users = await getPostLikedUsers(req.params.id, limit, skip);
+
+        res.json({
+            success: true,
+            users: users || [],
+            pagination: {
+                limit,
+                skip,
+                hasMore: users && users.length === limit
+            }
+        });
+    } catch (error) {
+        console.error('Get post likes error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to get post likes',
+            error: error.message 
+        });
+    }
+});
+
+// Comment routes
+router.post('/:postId/comments', authenticateToken, async (req, res) => {
+    try {
+        const result = await addComment(req.params.postId, req.user.id_user, req.body.content);
+        if (!result.success) {
+            return res.status(500).json(result);
+        }
+        res.status(201).json(result);
+    } catch (error) {
+        console.error('Comment creation error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+router.get('/:postId/comments', authenticateToken, async (req, res) => {
+    try {
+        const result = await getComments(
+            req.params.postId,
+            parseInt(req.query.limit) || 10,
+            parseInt(req.query.skip) || 0
+        );
+        if (!result.success) {
+            return res.status(500).json(result);
+        }
+        res.json(result);
+    } catch (error) {
+        console.error('Comments retrieval error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+router.put('/:postId/comments/:commentId', authenticateToken, async (req, res) => {
+    try {
+        const result = await updateComment(
+            req.params.commentId,
+            req.user.id_user,
+            req.body.content
+        );
+        if (!result.success) {
+            return res.status(result.message.includes('not found') ? 404 : 403).json(result);
+        }
+        res.json(result);
+    } catch (error) {
+        console.error('Comment update error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+router.delete('/:postId/comments/:commentId', authenticateToken, async (req, res) => {
+    try {
+        const result = await deleteComment(req.params.commentId, req.user.id_user);
+        if (!result.success) {
+            return res.status(result.message.includes('not found') ? 404 : 403).json(result);
+        }
+        res.json(result);
+    } catch (error) {
+        console.error('Comment deletion error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Reply routes
+router.post('/:postId/comments/:commentId/replies', authenticateToken, async (req, res) => {
+    try {
+        const result = await addReply(
+            req.params.commentId,
+            req.user.id_user,
+            req.body.content
+        );
+        if (!result.success) {
+            return res.status(500).json(result);
+        }
+        res.status(201).json(result);
+    } catch (error) {
+        console.error('Reply creation error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+router.get('/:postId/comments/:commentId/replies', authenticateToken, async (req, res) => {
+    try {
+        const result = await getReplies(
+            req.params.commentId,
+            parseInt(req.query.limit) || 10,
+            parseInt(req.query.skip) || 0
+        );
+        if (!result.success) {
+            return res.status(500).json(result);
+        }
+        res.json(result);
+    } catch (error) {
+        console.error('Replies retrieval error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Comment like routes
+router.post('/:postId/comments/:commentId/like', authenticateToken, async (req, res) => {
+    try {
+        const result = await toggleCommentLike(req.params.commentId, req.user.id_user);
+        if (!result.success) {
+            return res.status(500).json(result);
+        }
+        res.json(result);
+    } catch (error) {
+        console.error('Comment like toggle error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+router.post('/:postId/comments/:commentId/replies/:replyId/like', authenticateToken, async (req, res) => {
+    try {
+        const result = await toggleCommentLike(
+            req.params.commentId,
+            req.user.id_user,
+            true,
+            req.params.replyId
+        );
+        if (!result.success) {
+            return res.status(500).json(result);
+        }
+        res.json(result);
+    } catch (error) {
+        console.error('Reply like toggle error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Toggle like on a post
+router.post('/:id/like', authenticateToken, async (req, res) => {
+    try {
+        const result = await toggleLike(req.params.id, req.user.id_user);
+        
+        if (!result.success) {
+            return res.status(400).json(result);
+        }
+        
+        res.json(result);
+    } catch (error) {
+        console.error('Error toggling post like:', error);
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });

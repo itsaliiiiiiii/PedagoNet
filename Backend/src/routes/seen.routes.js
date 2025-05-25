@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth.middleware');
-const { markPostAsSeen, getSeenPosts } = require('../services/neo4j.service');
+const { markPostAsSeen, getSeenPosts } = require('../services/connection.service');
 
 // Mark a post as seen
 router.post('/:postId', authenticateToken, async (req, res) => {

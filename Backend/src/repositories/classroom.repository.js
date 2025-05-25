@@ -83,7 +83,8 @@ class ClassroomRepository extends BaseRepository {
                 id_user: s.id_user,
                 firstName: s.firstName,
                 lastName: s.lastName,
-                email: s.email
+                email: s.email,
+                class: s.class
             }) as students`;
 
         const records = await this.executeQuery(query, { classroomId });
@@ -95,7 +96,21 @@ class ClassroomRepository extends BaseRepository {
             MATCH (c:Classroom {id_classroom: $classroomId})
             OPTIONAL MATCH (p:User)-[:TEACHES]->(c)
             OPTIONAL MATCH (s:User)-[:ENROLLED_IN]->(c)
-            RETURN c, collect(DISTINCT p) as professors, collect(DISTINCT s) as students`;
+            RETURN c, 
+            collect(DISTINCT {
+                id: p.id_user,
+                firstName: p.firstName,
+                lastName: p.lastName,
+                email: p.email,
+                department: p.department
+            }) as professors, 
+            collect(DISTINCT {
+                id: s.id_user,
+                firstName: s.firstName,
+                lastName: s.lastName,
+                email: s.email,
+                class: s.class
+            }) as students`;
 
         const records = await this.executeQuery(query, { classroomId });
         if (records.length === 0) return null;
@@ -103,8 +118,8 @@ class ClassroomRepository extends BaseRepository {
         const record = records[0];
         return {
             classroom: record.get('c').properties,
-            professors: record.get('professors').map(p => p.properties),
-            students: record.get('students').map(s => s.properties)
+            professors: record.get('professors'),
+            students: record.get('students')
         };
     }
 
