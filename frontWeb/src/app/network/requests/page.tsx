@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { User, AlertCircle, Check, X, Filter, Search, Users } from 'lucide-react'
+import { User, AlertCircle, Check, X, Filter, Search, Users, CheckCircle, XCircle } from "lucide-react"
 import DesktopNav from "@/components/navs/desktopnav"
 import MobileNav from "@/components/navs/mobilenav"
 import Link from "next/link"
@@ -9,119 +9,81 @@ import Link from "next/link"
 export default function ConnectionRequestsPage() {
   // Types
   interface ConnectionRequest {
-    id: number
-    id_user: string
+    userId: string
+    email: string
     firstName: string
     lastName: string
-    avatar: string
-    requestDate: string
+    profilePhoto: string
     role: string
-    status?: "online" | "offline" | "away"
-    department?: string
-    major?: string
+    department: string | null
+    class: string | null
+    status: string
+    sentAt: string
   }
 
-  // État
+  
   const [activeRequest, setActiveRequest] = useState<ConnectionRequest | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pendingRequests, setPendingRequests] = useState<ConnectionRequest[]>([])
+  const [toast, setToast] = useState<{
+    visible: boolean
+    message: string
+    type: "success" | "error"
+  } | null>(null)
 
-  // Fonction pour déterminer si une demande est nouvelle (moins de 24 heures)
-  const isNewRequest = (requestDate: string) => {
-    const requestDateObj = new Date(requestDate)
+  
+  const isNewRequest = (sentAt: string) => {
+    const requestDateObj = new Date(sentAt)
     const now = new Date()
     const diffInHours = (now.getTime() - requestDateObj.getTime()) / (1000 * 60 * 60)
     return diffInHours <= 24
   }
 
-  // Données de démonstration
-  useEffect(() => {
-    // Simuler un chargement d'API
-    const timer = setTimeout(() => {
-      setPendingRequests([
-        {
-          id: 1,
-          id_user: "user1",
-          firstName: "Marie",
-          lastName: "Dubois",
-          avatar: "/placeholder.svg?height=40&width=40",
-          requestDate: "2025-05-12T05:53:19",
-          role: "Etudiant",
-          status: "online",
-          major: "Informatique",
-        },
-        {
-          id: 2,
-          id_user: "user2",
-          firstName: "Thomas",
-          lastName: "Laurent",
-          avatar: "/placeholder.svg?height=40&width=40",
-          requestDate: "2025-05-11T07:53:19",
-          role: "Etudiant",
-          status: "offline",
-          major: "Physique",
-        },
-        {
-          id: 3,
-          id_user: "user3",
-          firstName: "Jean",
-          lastName: "Martin",
-          avatar: "/placeholder.svg?height=40&width=40",
-          requestDate: "2025-05-09T16:53:19",
-          role: "prof",
-          status: "away",
-          department: "Mathématiques",
-        },
-        {
-          id: 4,
-          id_user: "user4",
-          firstName: "Sophie",
-          lastName: "Moreau",
-          avatar: "/placeholder.svg?height=40&width=40",
-          requestDate: "2025-05-08T16:53:19",
-          role: "Etudiant",
-          status: "online",
-          major: "Chimie",
-        },
-        {
-          id: 5,
-          id_user: "user5",
-          firstName: "Lucas",
-          lastName: "Bernard",
-          avatar: "/placeholder.svg?height=40&width=40",
-          requestDate: "2025-05-05T16:53:19",
-          role: "Etudiant",
-          major: "Économie",
-        },
-        {
-          id: 6,
-          id_user: "user6",
-          firstName: "Emma",
-          lastName: "Petit",
-          avatar: "/placeholder.svg?height=40&width=40",
-          requestDate: "2025-05-05T10:53:19",
-          role: "Etudiant",
-          status: "offline",
-          major: "Biologie",
-        },
-        {
-          id: 7,
-          id_user: "user7",
-          firstName: "Alexandre",
-          lastName: "Dupont",
-          avatar: "/placeholder.svg?height=40&width=40",
-          requestDate: "2025-04-28T16:53:19",
-          role: "prof",
-          department: "Informatique",
-        },
-      ])
-      setActiveRequest(null)
-      setLoading(false)
-    }, 1000)
+  
+  const showToast = (message: string, type: "success" | "error") => {
+    setToast({ visible: true, message, type })
+    setTimeout(() => {
+      setToast(null)
+    }, 3000)
+  }
 
-    return () => clearTimeout(timer)
+  useEffect(() => {
+    // Function to fetch pending connection requests
+    const fetchPendingRequests = async () => {
+      setLoading(true)
+      setError(null)
+
+      try {
+        const response = await fetch("http://localhost:8080/connections/pending", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include", // Include cookies for authentication
+        })
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch pending requests")
+        }
+
+        const data = await response.json()
+
+        if (data.success) {
+          setPendingRequests(data.pendingConnections)
+        } else {
+          throw new Error(data.message || "Failed to fetch pending requests")
+        }
+      } catch (err) {
+        console.error("Error fetching pending requests:", err)
+        setError("Une erreur est survenue lors du chargement des demandes de connexion.")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchPendingRequests()
   }, [])
 
   // Filtrer les demandes
@@ -129,24 +91,68 @@ export default function ConnectionRequestsPage() {
     return (
       searchQuery === "" ||
       `${request.firstName} ${request.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (request.major && request.major.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (request.class && request.class.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (request.department && request.department.toLowerCase().includes(searchQuery.toLowerCase()))
-  )})
+    )
+  })
 
   // Gérer les actions sur les demandes
-  const handleAcceptRequest = (requestId: number) => {
-    console.log("Acceptation de la demande:", requestId)
-    setPendingRequests(pendingRequests.filter((req) => req.id !== requestId))
-    if (activeRequest?.id === requestId) {
-      setActiveRequest(null)
+  const handleAcceptRequest = async (userId: string) => {
+    try {
+      const response = await fetch(`http://localhost:8080/connections/accept/${userId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      })
+
+      if (response.ok) {
+        // Remove the request from the list on success
+        setPendingRequests(pendingRequests.filter((req) => req.userId !== userId))
+        if (activeRequest?.userId === userId) {
+          setActiveRequest(null)
+        }
+        // Afficher le toast de succès
+        showToast("Demande de connexion acceptée avec succès", "success")
+      } else {
+        setError("Impossible d'accepter la demande. Veuillez réessayer.")
+        showToast("Impossible d'accepter la demande", "error")
+      }
+    } catch (error) {
+      console.error("Error accepting request:", error)
+      setError("Une erreur est survenue lors de l'acceptation de la demande.")
+      showToast("Une erreur est survenue lors de l'acceptation de la demande", "error")
     }
   }
 
-  const handleRejectRequest = (requestId: number) => {
-    console.log("Refus de la demande:", requestId)
-    setPendingRequests(pendingRequests.filter((req) => req.id !== requestId))
-    if (activeRequest?.id === requestId) {
-      setActiveRequest(null)
+  const handleRejectRequest = async (userId: string) => {
+    try {
+      // Call your API to reject the request
+      const response = await fetch(`http://localhost:8080/connections/refuse/${userId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      })
+
+      if (response.ok) {
+        // Remove the request from the list on success
+        setPendingRequests(pendingRequests.filter((req) => req.userId !== userId))
+        if (activeRequest?.userId === userId) {
+          setActiveRequest(null)
+        }
+        // Afficher le toast de succès
+        showToast("Demande de connexion refusée", "success")
+      } else {
+        setError("Impossible de refuser la demande. Veuillez réessayer.")
+        showToast("Impossible de refuser la demande", "error")
+      }
+    } catch (error) {
+      console.error("Error rejecting request:", error)
+      setError("Une erreur est survenue lors du refus de la demande.")
+      showToast("Une erreur est survenue lors du refus de la demande", "error")
     }
   }
 
@@ -159,8 +165,8 @@ export default function ConnectionRequestsPage() {
     if (diffInDays === 0) return "Aujourd'hui"
     if (diffInDays === 1) return "Hier"
     if (diffInDays < 7) return `Il y a ${diffInDays} jours`
-    if (diffInDays < 30) return `Il y a ${Math.floor(diffInDays/7)} semaines`
-    return `Il y a ${Math.floor(diffInDays/30)} mois`
+    if (diffInDays < 30) return `Il y a ${Math.floor(diffInDays / 7)} semaines`
+    return `Il y a ${Math.floor(diffInDays / 30)} mois`
   }
 
   return (
@@ -215,11 +221,6 @@ export default function ConnectionRequestsPage() {
               <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex justify-between items-center">
                   <h1 className="text-xl font-bold text-gray-900 dark:text-white">Demandes de connexion</h1>
-                  <div className="flex items-center gap-2">
-                    <button className="p-1.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                      <Filter className="h-5 w-5" />
-                    </button>
-                  </div>
                 </div>
 
                 {/* Search */}
@@ -233,9 +234,6 @@ export default function ConnectionRequestsPage() {
                     className="w-full pl-10 pr-4 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
-
-                {/* Spacer */}
-                <div className="mt-4 border-b border-gray-200 dark:border-gray-700"></div>
               </div>
 
               {/* Loading State */}
@@ -277,14 +275,14 @@ export default function ConnectionRequestsPage() {
                 <div className="divide-y divide-gray-200 dark:divide-gray-700">
                   {filteredRequests.map((request) => (
                     <ConnectionRequestItem
-                      key={request.id}
+                      key={request.userId}
                       request={request}
-                      isActive={activeRequest?.id === request.id}
-                      onClick={() => setActiveRequest(request.id === activeRequest?.id ? null : request)}
-                      onAccept={() => handleAcceptRequest(request.id)}
-                      onReject={() => handleRejectRequest(request.id)}
-                      isNew={isNewRequest(request.requestDate)}
-                      formattedDate={formatRequestDate(request.requestDate)}
+                      isActive={activeRequest?.userId === request.userId}
+                      onClick={() => setActiveRequest(request.userId === activeRequest?.userId ? null : request)}
+                      onAccept={() => handleAcceptRequest(request.userId)}
+                      onReject={() => handleRejectRequest(request.userId)}
+                      isNew={isNewRequest(request.sentAt)}
+                      formattedDate={formatRequestDate(request.sentAt)}
                     />
                   ))}
                 </div>
@@ -298,16 +296,12 @@ export default function ConnectionRequestsPage() {
                       {/* Profile Image */}
                       <div className="relative flex-shrink-0">
                         <img
-                          src={activeRequest.avatar || "/placeholder.svg"}
+                          src={
+                            activeRequest.profilePhoto ? `/uploads/${activeRequest.profilePhoto}` : "/placeholder.svg"
+                          }
                           alt={`${activeRequest.firstName} ${activeRequest.lastName}`}
                           className="h-24 w-24 rounded-full object-cover border-4 border-white dark:border-gray-800 shadow-sm"
                         />
-                        {activeRequest.status === "online" && (
-                          <div className="absolute bottom-1 right-1 h-4 w-4 rounded-full bg-green-500 border-2 border-white dark:border-gray-800"></div>
-                        )}
-                        {activeRequest.status === "away" && (
-                          <div className="absolute bottom-1 right-1 h-4 w-4 rounded-full bg-yellow-500 border-2 border-white dark:border-gray-800"></div>
-                        )}
                       </div>
 
                       {/* Profile Info */}
@@ -320,25 +314,25 @@ export default function ConnectionRequestsPage() {
                         <div className="mt-2">
                           <span
                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              activeRequest.role === "prof"
+                              activeRequest.role === "professor"
                                 ? "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400"
                                 : "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
                             }`}
                           >
-                            {activeRequest.role === "prof" ? "Professeur" : "Étudiant"}
+                            {activeRequest.role === "professor" ? "Professeur" : "Étudiant"}
                           </span>
                         </div>
 
                         {/* Date de la demande */}
                         <div className="mt-2">
                           <span className="text-sm text-gray-500 dark:text-gray-400">
-                            Demande reçue {formatRequestDate(activeRequest.requestDate)}
+                            Demande reçue {formatRequestDate(activeRequest.sentAt)}
                           </span>
                         </div>
 
                         {/* Informations utilisateur */}
                         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {activeRequest.role === "prof" && activeRequest.department && (
+                          {activeRequest.role === "professor" && activeRequest.department && (
                             <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
                               <p className="text-xs text-gray-500 dark:text-gray-400">Département</p>
                               <p className="text-sm font-medium text-gray-900 dark:text-white">
@@ -347,14 +341,17 @@ export default function ConnectionRequestsPage() {
                             </div>
                           )}
 
-                          {activeRequest.role === "Etudiant" && activeRequest.major && (
+                          {activeRequest.role === "student" && activeRequest.class && (
                             <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
-                              <p className="text-xs text-gray-500 dark:text-gray-400">Spécialité</p>
-                              <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                {activeRequest.major}
-                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">Classe</p>
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">{activeRequest.class}</p>
                             </div>
                           )}
+
+                          <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Email</p>
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">{activeRequest.email}</p>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -362,14 +359,14 @@ export default function ConnectionRequestsPage() {
                     {/* Boutons d'action */}
                     <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center sm:justify-start">
                       <button
-                        onClick={() => handleAcceptRequest(activeRequest.id)}
+                        onClick={() => handleAcceptRequest(activeRequest.userId)}
                         className="px-6 py-2.5 rounded-lg bg-blue-600 dark:bg-blue-500 text-white font-medium hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 flex items-center justify-center gap-2"
                       >
                         <Check className="h-4 w-4" />
                         Accepter
                       </button>
                       <button
-                        onClick={() => handleRejectRequest(activeRequest.id)}
+                        onClick={() => handleRejectRequest(activeRequest.userId)}
                         className="px-6 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 flex items-center justify-center gap-2"
                       >
                         <X className="h-4 w-4" />
@@ -383,13 +380,37 @@ export default function ConnectionRequestsPage() {
           </div>
         </div>
       </main>
-
+      {/* Toast Notification */}
+      {toast && (
+        <div
+          className={`fixed bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg transition-all duration-300 ${
+            toast.type === "success"
+              ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+              : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+          }`}
+        >
+          {toast.type === "success" ? <CheckCircle className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
+          <p className="text-sm font-medium">{toast.message}</p>
+        </div>
+      )}
       <MobileNav />
     </div>
   )
 }
 
 // Composant pour l'élément de demande de connexion
+interface ConnectionRequest {
+  userId: string
+  email: string
+  firstName: string
+  lastName: string
+  profilePhoto: string
+  role: string
+  department: string | null
+  class: string | null
+  status: string
+  sentAt: string
+}
 function ConnectionRequestItem({
   request,
   isActive,
@@ -399,18 +420,7 @@ function ConnectionRequestItem({
   isNew,
   formattedDate,
 }: {
-  request: {
-    id: number
-    id_user: string
-    firstName: string
-    lastName: string
-    avatar: string
-    requestDate: string
-    role: string
-    status?: "online" | "offline" | "away"
-    department?: string
-    major?: string
-  }
+  request: ConnectionRequest
   isActive: boolean
   onClick: () => void
   onAccept: () => void
@@ -420,30 +430,25 @@ function ConnectionRequestItem({
 }) {
   return (
     <div
-      className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50  ${
-        isActive ? "bg-blue-50 dark:bg-blue-900/20" : ""
-      }`}
+      className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50  ${isActive ? "bg-blue-50 dark:bg-blue-900/20" : ""}`}
     >
       <div className="flex items-start gap-4">
-        {/* Avatar avec statut */}
-        <div className="relative ">
+        {/* Avatar */}
+        <div className="relative">
           <img
-            src={request.avatar || "/placeholder.svg"}
+            src={request.profilePhoto ? `/uploads/${request.profilePhoto}` : "/placeholder.svg"}
             alt={`${request.firstName} ${request.lastName}`}
             className="h-12 w-12 rounded-full object-cover"
           />
-          {request.status === "online" && (
-            <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-500 border-2 border-white dark:border-gray-800"></div>
-          )}
-          {request.status === "away" && (
-            <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-yellow-500 border-2 border-white dark:border-gray-800"></div>
-          )}
         </div>
 
         {/* Informations sur la demande */}
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-baseline">
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate select-none cursor-pointer" onClick={onClick}>
+            <h3
+              className="text-sm font-medium text-gray-900 dark:text-white truncate select-none cursor-pointer"
+              onClick={onClick}
+            >
               {request.firstName} {request.lastName}
             </h3>
             <span className="text-xs ml-2 text-gray-500 dark:text-gray-400 select-none">{formattedDate}</span>
@@ -453,24 +458,20 @@ function ConnectionRequestItem({
           <div className="flex items-center gap-2 mt-1">
             <span
               className={`px-1.5 py-0.5 text-xs rounded-full select-none ${
-                request.role === "prof"
+                request.role === "professor"
                   ? "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400"
                   : "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
               }`}
             >
-              {request.role === "prof" ? "Professeur" : "Étudiant"}
+              {request.role === "professor" ? "Professeur" : "Étudiant"}
             </span>
 
-            {request.role === "prof" && request.department && (
-              <span className="text-xs select-none text-gray-600 dark:text-gray-400">
-                {request.department}
-              </span>
+            {request.role === "professor" && request.department && (
+              <span className="text-xs select-none text-gray-600 dark:text-gray-400">{request.department}</span>
             )}
 
-            {request.role === "Etudiant" && request.major && (
-              <span className="text-xs select-none text-gray-600 dark:text-gray-400">
-                {request.major}
-              </span>
+            {request.role === "student" && request.class && (
+              <span className="text-xs select-none text-gray-600 dark:text-gray-400">{request.class}</span>
             )}
           </div>
         </div>
