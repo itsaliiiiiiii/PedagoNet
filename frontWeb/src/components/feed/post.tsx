@@ -2,7 +2,8 @@
 
 import type React from "react"
 import { useState, useRef, useEffect } from "react"
-import {ThumbsUp,
+import {
+  ThumbsUp,
   MessageCircle,
   Share2,
   MoreHorizontal,
@@ -12,9 +13,9 @@ import {ThumbsUp,
   Globe,
   Heart,
   Play,
-  ImageIcon,
   Download,
-  ExternalLink,} from "lucide-react"
+  ExternalLink,
+} from "lucide-react"
 
 interface CommentType {
   id: string
@@ -27,7 +28,8 @@ interface CommentType {
 }
 
 interface PostProps {
- avatar: React.ReactNode
+  postId: string // Added postId prop
+  avatar: React.ReactNode
   avatarBg?: string
   name: string
   title: string
@@ -50,9 +52,11 @@ interface PostProps {
   comments: number
   isLiked?: boolean
   commentsList?: CommentType[]
-  visibility?: "public" | "friends" | "private"}
+  visibility?: "public" | "friends" | "private"
+}
 
 const Post: React.FC<PostProps> = ({
+  postId, // Added postId
   avatar,
   avatarBg = "",
   name,
@@ -78,6 +82,9 @@ const Post: React.FC<PostProps> = ({
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [isVideoPlaying, setIsVideoPlaying] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const [liked, setLiked] = useState(isLiked)
+  const [likeCount, setLikeCount] = useState(likes)
+  const [isLikeLoading, setIsLikeLoading] = useState(false)
 
   const imagesArray = images || (image ? [image] : undefined)
 
@@ -148,8 +155,6 @@ const Post: React.FC<PostProps> = ({
   const handleSubmitComment = (e: React.FormEvent) => {
     e.preventDefault()
     if (newComment.trim()) {
-      // In a real app, you would add the comment to your database
-      // For now, we'll just clear the input
       setNewComment("")
     }
   }
@@ -209,6 +214,35 @@ const Post: React.FC<PostProps> = ({
 
   const visibilityInfo = getVisibilityInfo()
 
+  // Handle like functionality with real API call
+  const handleLike = async () => {
+    if (isLikeLoading || !postId) return
+
+    setIsLikeLoading(true)
+
+    try {
+      const response = await fetch(`http://localhost:8080/posts/${postId}/like`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      })
+
+      if (response.ok) {
+        // Only update UI if API call was successful
+        setLiked(!liked)
+        setLikeCount((prev) => prev + (liked ? -1 : 1))
+      } else {
+        // Handle API error
+        console.error("API Error:", "Failed to update like status")
+      }
+    } catch (error) {
+      console.error("Error liking post:", error)
+    } finally {
+      setIsLikeLoading(false)
+    }
+  }
 
   // Scroll to new comments when they're loaded
   useEffect(() => {
@@ -257,8 +291,25 @@ const Post: React.FC<PostProps> = ({
               <div>
                 <h3 className="font-semibold text-gray-900 dark:text-white">{name}</h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{title}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {time} • <span className="text-blue-600 dark:text-blue-400">Visible par tous</span>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
+                  {time} •
+                  <span
+                    className={`${
+                      visibility === "friends"
+                        ? "text-blue-500 dark:text-blue-400"
+                        : visibility === "private"
+                          ? "text-purple-500 dark:text-purple-400"
+                          : "text-green-500 dark:text-green-400"
+                    }`}
+                  >
+                    {visibility === "friends" ? (
+                      <Users className="h-3.5 w-3.5" />
+                    ) : visibility === "private" ? (
+                      <Lock className="h-3.5 w-3.5" />
+                    ) : (
+                      <Globe className="h-3.5 w-3.5" />
+                    )}
+                  </span>
                 </p>
               </div>
               <button className="text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full p-1.5 transition-colors duration-200">
@@ -268,11 +319,6 @@ const Post: React.FC<PostProps> = ({
             <div className="mt-3.5">
               <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">{content}</p>
             </div>
-            {/* {image && (
-              <div className="mt-4 rounded-xl overflow-hidden border border-gray-200/80 dark:border-gray-700/80 shadow-sm">
-                <img src={image || "/default-placeholder.png"} alt={imageAlt} className="w-full h-auto object-cover" />
-              </div>
-            )} */}
             {mediaType && (
               <div className="mt-4">
                 {/* Multiple images */}
@@ -432,13 +478,13 @@ const Post: React.FC<PostProps> = ({
           </div>
         </div>
 
-        {(likes > 0 || comments > 0) && (
+        {(likeCount > 0 || comments > 0) && (
           <div className="mt-4 pt-1 flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
             <div className="flex items-center gap-1.5">
               <div className="bg-gradient-to-r from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 rounded-full p-1 shadow-sm">
                 <ThumbsUp className="h-3 w-3 text-blue-600 dark:text-blue-400" />
               </div>
-              <span>{likes}</span>
+              <span>{likeCount}</span>
             </div>
             {comments > 0 && (
               <button
@@ -454,11 +500,19 @@ const Post: React.FC<PostProps> = ({
       <div className="flex border-t border-gray-200/80 dark:border-gray-700/80">
         <button
           className={`flex-1 py-3 flex items-center justify-center gap-2 text-sm ${
-            isLiked ? "text-blue-600 dark:text-blue-400 font-medium" : "text-gray-600 dark:text-gray-300"
-          } hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-200`}
-          aria-label={isLiked ? "Retirer le j'aime" : "Aimer le post"}
+            liked ? "text-blue-600 dark:text-blue-400 font-medium" : "text-gray-600 dark:text-gray-300"
+          } hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-200 ${
+            isLikeLoading ? "opacity-70 cursor-not-allowed" : ""
+          }`}
+          aria-label={liked ? "Retirer le j'aime" : "Aimer le post"}
+          onClick={handleLike}
+          disabled={isLikeLoading}
         >
-          <ThumbsUp className={`h-4 w-4 ${isLiked ? "fill-current" : ""}`} />
+          {isLikeLoading ? (
+            <div className="h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <ThumbsUp className={`h-4 w-4 ${liked ? "fill-current" : ""}`} />
+          )}
           <span>J'aime</span>
         </button>
         <button

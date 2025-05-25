@@ -211,10 +211,11 @@ export default function HomePage() {
 
       // Transform API posts to match PostData interface
       const newPosts = data.posts.map((apiPost: any) => {
+        console.log("API Post:", apiPost)
         return {
-          id: apiPost.id_post,
+          id: apiPost.id,
           author: {
-            id: apiPost.author.id_user || apiPost.author.id || "unknown",
+            id: apiPost.author.id || "unknown",
             name: `${apiPost.author.lastName} ${apiPost.author.firstName}`,
             avatar: "",
             title:
@@ -228,9 +229,9 @@ export default function HomePage() {
           content: apiPost.content,
           createdAt: apiPost.createdAt,
           attachments: apiPost.attachments || "[]",
-          likes: apiPost.likes || 0,
+          likes: apiPost.likesCount || 0,
           comments: apiPost.comments || 0,
-          isLiked: apiPost.isLiked || false,
+          isLiked: apiPost.hasLiked || false,
           visibility: apiPost.visibility || "public",
         }
       })
@@ -367,6 +368,7 @@ export default function HomePage() {
                 <div key={index} ref={index === posts.length - 1 ? lastPostElementRef : null}>
                   <Post
                     key={post.id}
+                    postId={post.id}
                     avatar={post.author.avatar || <User className="h-6 w-6 text-purple-600 dark:text-purple-400" />}
                     avatarBg={avatarBg}
                     name={post.author.name}
