@@ -74,10 +74,12 @@ class PostRepository extends BaseRepository {
             AND NOT EXISTS {
                 MATCH (viewer:User {id_user: $userId})-[:SEEN]->(p)
             }
+            WITH p, author
             OPTIONAL MATCH (p)<-[like:LIKE]-()
+            WITH p, author, COUNT(DISTINCT like) as likesCount
             OPTIONAL MATCH (viewer:User {id_user: $userId})-[userLike:LIKE]->(p)
             OPTIONAL MATCH (p)-[:HAS_ATTACHMENT]->(a:Attachment)
-            WITH p, author, COUNT(like) as likesCount, COLLECT(a) as attachments, 
+            WITH p, author, likesCount, COLLECT(a) as attachments,
                  CASE WHEN userLike IS NOT NULL THEN true ELSE false END as hasLiked
             RETURN p, author, likesCount, attachments, hasLiked
             ORDER BY p.createdAt DESC
