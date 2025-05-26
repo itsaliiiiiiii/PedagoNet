@@ -1,6 +1,8 @@
 const userRepository = require('../repositories/user.repository');
 const fs = require('fs').promises;
 const path = require('path');
+const { getConnections } = require('./connection.service');
+const { getUserPosts } = require('./post.service');
 
 const getUserProfile = async (userId) => {
     try {
@@ -17,6 +19,14 @@ const getUserProfile = async (userId) => {
         if (userProfile.profilePhoto) {
             userProfile.profilePhotoUrl = `/upload/${userProfile.profilePhoto.filename}`;
         }
+
+        // Get connection count
+        const connections = await getConnections(userId, 'accepted');
+        userProfile.connectionCount = connections ? connections.length : 0;
+
+        // Get post count
+        const postsResult = await getUserPosts(userId, userId, true);
+        userProfile.postCount = postsResult.success ? postsResult.posts.length : 0;
         
         return {
             success: true,
