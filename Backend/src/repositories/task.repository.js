@@ -14,17 +14,30 @@ class TaskRepository extends BaseRepository {
                 updatedAt: datetime()
             })
             CREATE (c)-[:HAS_TASK]->(t)
+            WITH t
+            UNWIND $attachments AS attachment
+            CREATE (a:Attachment {
+                id: randomUUID(),
+                filename: attachment.filename,
+                originalName: attachment.originalName,
+                mimetype: attachment.mimetype,
+                size: attachment.size,
+                path: attachment.path,
+                createdAt: datetime()
+            })
+            CREATE (t)-[:HAS_ATTACHMENT]->(a)
             RETURN t`;
-
+    
         const records = await this.executeQuery(query, {
             professorId,
             classroomId,
             title: taskData.title,
             description: taskData.description,
             deadline: taskData.deadline,
-            maxScore: taskData.maxScore
+            maxScore: taskData.maxScore,
+            attachments: taskData.attachments || []
         });
-
+    
         return records.length > 0 ? records[0].get('t').properties : null;
     }
 
@@ -55,7 +68,7 @@ class TaskRepository extends BaseRepository {
             CREATE (sub:Submission {
                 id_submission: randomUUID(),
                 content: $content,
-                filePath: $filePath,
+                attachments: $attachments,
                 submittedAt: datetime(),
                 status: 'submitted',
                 student_id: $studentId
@@ -68,7 +81,7 @@ class TaskRepository extends BaseRepository {
             taskId,
             studentId,
             content: submissionData.content,
-            filePath: submissionData.filePath
+            attachments: submissionData.attachments || []
         });
 
         return records.length > 0 ? records[0].get('sub').properties : null;
