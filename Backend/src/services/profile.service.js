@@ -98,12 +98,6 @@ const updateProfilePhoto = async (userId, file) => {
             profilePhotoUrl: `/upload/${file.filename}`,
         };
 
-        return {
-            success: true,
-            message: "Profile photo updated successfully",
-            profilePhoto: photoData,
-            profilePhotoUrl: `/upload/${file.filename}`,
-        };
     } catch (error) {
         console.error("Update profile photo error:", error);
         return { success: false, message: "Failed to update profile photo" };
