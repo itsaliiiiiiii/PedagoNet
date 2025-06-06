@@ -367,6 +367,7 @@ export default function HomePage() {
               return (
                 <div key={index} ref={index === posts.length - 1 ? lastPostElementRef : null}>
                   <Post
+                    authorId={post.author.id}
                     key={post.id}
                     postId={post.id}
                     avatar={post.author.avatar || <User className="h-6 w-6 text-purple-600 dark:text-purple-400" />}
@@ -381,8 +382,7 @@ export default function HomePage() {
                     likes={post.likes}
                     comments={post.comments}
                     isLiked={post.isLiked}
-                    visibility={post.visibility}
-                  />
+                    visibility={post.visibility}                  />
                 </div>
               )
             })}

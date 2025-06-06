@@ -62,18 +62,23 @@ const calculateAge = (dateObj: any) => {
   return age
 }
 
-export default function MyProfilePage() {
+export default function UserProfilePage() {
+  const params = useParams()
+  const userId = params?.id as string
+
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<"posts" | "about" | "friends">("posts")
 
   useEffect(() => {
+    if (!userId) return
+    
     setLoading(true)
     setError(null)
     const fetchProfile = async () => {
       try {
-        const url = `http://localhost:8080/profile/me`
+        const url = `http://localhost:8080/profile/${userId}`
         const res = await fetch(url, { credentials: "include" })
         let json = null
         try {
@@ -98,10 +103,11 @@ export default function MyProfilePage() {
       }
     }
     fetchProfile()
-  }, [])
+  }, [userId])
 
   if (loading) return <div>Chargement...</div>
 
+  // Error display with centered error logo and message
   if (error || !profile)
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
@@ -124,16 +130,10 @@ export default function MyProfilePage() {
             strokeLinejoin="round"
           />
         </svg>
-        <div className="text-2xl font-extrabold text-red-600 dark:text-red-400 mb-2 font-sans tracking-tight text-center">
-          Oups, ce profil est introuvable !
+        <div className="text-xl font-semibold text-red-600 dark:text-red-400 mb-2">
+          {error || "Profil introuvable"}
         </div>
-        <div className="text-base font-medium text-gray-600 dark:text-gray-300 text-center max-w-md mb-2">
-          Il semble que ce profil n'existe pas ou n'est plus disponible.<br />
-          Vérifiez le lien ou essayez de revenir plus tard.
-        </div>
-        <div className="text-sm text-gray-400 dark:text-gray-500 italic mt-2">
-          {error && <span>Détail : {error}</span>}
-        </div>
+        <div className="text-gray-500 dark:text-gray-400">Impossible d'afficher ce profil.</div>
       </div>
     )
 
@@ -349,18 +349,13 @@ export default function MyProfilePage() {
                   <Post
                     key={post.id}
                     postId={post.id.toString()}
-                    authorId={profile.id_user} // Pass authorId instead of userId
-                    avatar={
-                      <img
-                        src={profile.profilePhotoUrl || `http://localhost:8080/uploads/${profile.profilePhoto}`}
-                        alt={`${profile.firstName} ${profile.lastName}`}
-                        className="h-full w-full object-cover rounded-full"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement
-                          target.src = `data:image/svg+xml;base64,${btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><rect width="48" height="48" fill="#e5e7eb"/><text x="24" y="24" font-family="Arial" font-size="16" fill="#9ca3af" text-anchor="middle" dy="0.3em">${profile.firstName[0]}${profile.lastName[0]}</text></svg>`)}`
-                        }}
-                      />
-                    }
+                    avatar={<img
+                      alt={`${profile.firstName} ${profile.lastName}`}
+                      className="h-full w-full object-cover rounded-full"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement
+
+                      } } />}
                     avatarBg="bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/40 dark:to-blue-800/20"
                     name={`${profile.firstName} ${profile.lastName}`}
                     title={`${profile.role.charAt(0).toUpperCase() + profile.role.slice(1)} en ${profile.major}`}
@@ -370,8 +365,8 @@ export default function MyProfilePage() {
                     imageAlt="Image du post"
                     likes={post.likes}
                     comments={post.comments}
-                    isLiked={post.id === 3}
-                  />
+                    isLiked={post.id === 3} authorId={""} 
+                    />
                 ))}
               </div>
             </div>

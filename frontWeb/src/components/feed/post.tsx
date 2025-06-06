@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useState, useRef, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import {
   ThumbsUp,
   MessageCircle,
@@ -28,7 +29,8 @@ interface CommentType {
 }
 
 interface PostProps {
-  postId: string // Added postId prop
+  postId: string
+  authorId: string
   avatar: React.ReactNode
   avatarBg?: string
   name: string
@@ -56,7 +58,8 @@ interface PostProps {
 }
 
 const Post: React.FC<PostProps> = ({
-  postId, // Added postId
+  postId,
+  authorId,
   avatar,
   avatarBg = "",
   name,
@@ -89,6 +92,8 @@ const Post: React.FC<PostProps> = ({
   const [commentsLoading, setCommentsLoading] = useState(false)
   const [commentsError, setCommentsError] = useState<string | null>(null)
   const [commentsFetched, setCommentsFetched] = useState(false)
+  const router = useRouter()
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   const imagesArray = images || (image ? [image] : undefined)
 
@@ -324,6 +329,37 @@ const Post: React.FC<PostProps> = ({
     }
   }, [])
 
+  // Fetch current user ID
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const res = await fetch("http://localhost:8080/profile/me", {
+          credentials: "include",
+        })
+        if (res.ok) {
+          const json = await res.json()
+          if (json.success && json.profile) {
+            setCurrentUserId(json.profile.id_user)
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching current user:", error)
+      }
+    }
+    fetchCurrentUser()
+  }, [])
+
+  // Handle profile navigation
+  const handleProfileClick = () => {
+    if (currentUserId && authorId === currentUserId) {
+      // Navigate to own profile
+      router.push("/profile")
+    } else {
+      // Navigate to other user's profile
+      router.push(`/profile/${authorId}`)
+    }
+  }
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200/80 dark:border-gray-700/80 overflow-hidden transition-all duration-300 hover:shadow-lg">
       <div className="p-5">
@@ -331,14 +367,22 @@ const Post: React.FC<PostProps> = ({
           <div
             className={`h-12 w-12 rounded-full ${
               avatarBg || "bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700"
-            } flex items-center justify-center shrink-0 shadow-sm ring-2 ring-white dark:ring-gray-700`}
+            } flex items-center justify-center shrink-0 shadow-sm ring-2 ring-white dark:ring-gray-700 cursor-pointer hover:ring-blue-300`}
+            onClick={handleProfileClick}
+            title="Voir le profil"
           >
             {avatar}
           </div>
           <div className="flex-1">
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white">{name}</h3>
+                <h3 
+                  className="font-semibold text-gray-900 dark:text-white cursor-pointer hover:underline"
+                  onClick={handleProfileClick}
+                  title="Voir le profil"
+                >
+                  {name}
+                </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{title}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
                   {time} •

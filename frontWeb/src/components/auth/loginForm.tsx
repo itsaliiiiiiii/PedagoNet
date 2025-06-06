@@ -42,7 +42,7 @@ export default function LoginForm() {
         throw new Error(message || "Failed to login")
       }
 
-      router.push("/home")
+      router.push("/feed")
     } catch (err: any) {
       setError(err.message || "Failed to login. Please check your credentials.")
     } finally {
