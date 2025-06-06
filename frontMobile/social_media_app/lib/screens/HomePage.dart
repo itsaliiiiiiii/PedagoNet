@@ -9,7 +9,6 @@ import 'package:social_media_app/provider/PostProvider.dart';
 import 'package:social_media_app/screens/classroom/ClassroomPage.dart';
 import 'package:social_media_app/screens/CreatePostPage.dart';
 import 'package:social_media_app/screens/FriendPage.dart';
-import 'package:social_media_app/screens/InvitationsPage.dart';
 import 'package:social_media_app/screens/auth/LoginPage2.dart';
 import 'package:social_media_app/screens/MessagesPage.dart';
 import 'package:social_media_app/screens/ProfilePage.dart';

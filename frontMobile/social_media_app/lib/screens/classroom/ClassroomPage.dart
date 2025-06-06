@@ -22,7 +22,7 @@ class _ClassroomPageState extends State<ClassroomPage>
   late Animation<double> _animation;
   final bool _isLoading = false;
 
-  late bool isProfessor = false;
+  late bool isProfessor = true;
   // Données statiques pour la démonstration
 
   List<dynamic> _courses = [];

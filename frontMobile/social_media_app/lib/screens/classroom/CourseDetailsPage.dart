@@ -409,7 +409,7 @@ class _CourseDetailsPageState extends State<CourseDetailsPage>
       physics: const BouncingScrollPhysics(),
       slivers: [
         SliverToBoxAdapter(
-        child: Container(
+        child: SizedBox(
           width: double.infinity,
           child: Padding(
             padding: const EdgeInsets.all(16),

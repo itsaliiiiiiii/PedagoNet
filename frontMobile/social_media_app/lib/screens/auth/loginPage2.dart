@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:social_media_app/services/auth_service.dart';
 import 'package:social_media_app/screens/auth/RegisterPage.dart';
 import 'package:social_media_app/screens/HomePage.dart';
-import 'package:social_media_app/models/UserModel.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:social_media_app/screens/auth/CreatePasswordPage.dart';
 import 'package:social_media_app/services/auth_service.dart';
-import 'package:social_media_app/screens/auth/LoginPage2.dart';
 
 class VerificationPage extends StatefulWidget {
   final String email;
