@@ -157,7 +157,6 @@ const deleteClassroom = async (classroomId, professorId) => {
 
 module.exports = {
     createClassroom,
-    enrollStudent,
     getClassroomDetails,
     getStudentClassrooms,
     getProfessorClassrooms,
