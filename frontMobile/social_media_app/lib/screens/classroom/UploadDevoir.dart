@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:http_parser/http_parser.dart';
+import 'package:social_media_app/core/Api.dart';
+import 'package:http/http.dart' as http;
+import 'dart:io';
+import 'dart:convert';
 
 class AssignmentSubmissionPage extends StatefulWidget {
   final Map<String, dynamic> assignment;
@@ -14,17 +19,24 @@ class AssignmentSubmissionPage extends StatefulWidget {
   });
 
   @override
-  State<AssignmentSubmissionPage> createState() => _AssignmentSubmissionPageState();
+  State<AssignmentSubmissionPage> createState() =>
+      _AssignmentSubmissionPageState();
 }
 
-class _AssignmentSubmissionPageState extends State<AssignmentSubmissionPage> with SingleTickerProviderStateMixin {
+class _AssignmentSubmissionPageState extends State<AssignmentSubmissionPage>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _animation;
-  
+
   final TextEditingController _commentController = TextEditingController();
   final List<Map<String, dynamic>> _uploadedFiles = [];
   bool _isSubmitting = false;
   bool _isUploading = false;
+
+  // Variables pour le fichier
+  File? _selectedFile;
+  String? _fileName;
+  String? _fileExtension;
 
   // Détails étendus du devoir (simulés)
   late Map<String, dynamic> _assignmentDetails;
@@ -32,7 +44,7 @@ class _AssignmentSubmissionPageState extends State<AssignmentSubmissionPage> wit
   @override
   void initState() {
     super.initState();
-    
+
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -46,7 +58,8 @@ class _AssignmentSubmissionPageState extends State<AssignmentSubmissionPage> wit
     // Initialiser les détails du devoir avec des données étendues
     _assignmentDetails = {
       ...widget.assignment,
-      'description': 'Développez une application complète en utilisant les concepts de programmation orientée objet. L\'application doit inclure au moins 3 classes avec héritage, polymorphisme et encapsulation. Documentez votre code et fournissez un rapport explicatif.',
+      'description':
+          'Développez une application complète en utilisant les concepts de programmation orientée objet. L\'application doit inclure au moins 3 classes avec héritage, polymorphisme et encapsulation. Documentez votre code et fournissez un rapport explicatif.',
       'requirements': [
         'Code source complet',
         'Documentation technique',
@@ -56,7 +69,8 @@ class _AssignmentSubmissionPageState extends State<AssignmentSubmissionPage> wit
       'acceptedFormats': ['java', 'py', 'cpp', 'pdf', 'docx', 'zip', 'rar'],
       'maxFileSize': '50 MB',
       'maxFiles': 5,
-      'instructions': 'Compressez tous vos fichiers dans une archive ZIP. Nommez vos fichiers clairement. Le rapport doit faire entre 5 et 10 pages.',
+      'instructions':
+          'Compressez tous vos fichiers dans une archive ZIP. Nommez vos fichiers clairement. Le rapport doit faire entre 5 et 10 pages.',
     };
   }
 
@@ -69,7 +83,7 @@ class _AssignmentSubmissionPageState extends State<AssignmentSubmissionPage> wit
 
   String _formatTimeUntil(DateTime dateTime) {
     final Duration difference = dateTime.difference(DateTime.now());
-    
+
     if (difference.inDays > 0) {
       return '${difference.inDays} jour${difference.inDays > 1 ? 's' : ''} restant${difference.inDays > 1 ? 's' : ''}';
     } else if (difference.inHours > 0) {
@@ -137,7 +151,8 @@ class _AssignmentSubmissionPageState extends State<AssignmentSubmissionPage> wit
 
   Future<void> _pickFiles() async {
     if (_uploadedFiles.length >= _assignmentDetails['maxFiles']) {
-      _showErrorSnackBar('Nombre maximum de fichiers atteint (${_assignmentDetails['maxFiles']})');
+      _showErrorSnackBar(
+          'Nombre maximum de fichiers atteint (${_assignmentDetails['maxFiles']})');
       return;
     }
 
@@ -158,16 +173,19 @@ class _AssignmentSubmissionPageState extends State<AssignmentSubmissionPage> wit
             break;
           }
 
-          // Vérifier la taille du fichier (50 MB max)
-          if (file.size > 50 * 1024 * 1024) {
-            _showErrorSnackBar('Le fichier ${file.name} est trop volumineux (max 50 MB)');
+          // Vérifier l'extension
+          String extension = file.extension?.toLowerCase() ?? '';
+          if (extension.isEmpty ||
+              !_assignmentDetails['acceptedFormats'].contains(extension)) {
+            _showErrorSnackBar(
+                'Format de fichier non supporté: ${file.name}. Formats acceptés: ${_assignmentDetails['acceptedFormats'].join(', ')}');
             continue;
           }
 
-          // Vérifier l'extension
-          String extension = file.extension?.toLowerCase() ?? '';
-          if (!_assignmentDetails['acceptedFormats'].contains(extension)) {
-            _showErrorSnackBar('Format de fichier non supporté: ${file.name}');
+          // Vérifier la taille du fichier (50 MB max)
+          if (file.size > 50 * 1024 * 1024) {
+            _showErrorSnackBar(
+                'Le fichier ${file.name} est trop volumineux (max 50 MB)');
             continue;
           }
 
@@ -198,9 +216,114 @@ class _AssignmentSubmissionPageState extends State<AssignmentSubmissionPage> wit
     });
   }
 
+  Future<void> _pickFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx'],
+      );
+
+      if (result != null) {
+        setState(() {
+          _selectedFile = File(result.files.single.path!);
+          _fileName = result.files.single.name;
+          _fileExtension = result.files.single.extension;
+        });
+      }
+    } catch (e) {
+      _showErrorSnackBar('Erreur lors de la sélection du fichier: $e');
+    }
+  }
+
+  Future<void> uploadTask() async {
+    try {
+      setState(() {
+        _isSubmitting = true;
+      });
+
+      String url =
+          "${Api.baseUrl}/tasks/${widget.assignment['id_task']}/submit";
+      print('URL de soumission: $url');
+
+      // Create multipart request
+      var request = http.MultipartRequest('POST', Uri.parse(url));
+
+      // Add authorization header
+      request.headers['Authorization'] = 'Bearer ${widget.token}';
+      print('Headers: ${request.headers}');
+
+      // Add comment if provided
+      if (_commentController.text.isNotEmpty) {
+        request.fields['content'] = _commentController.text;
+        print('Commentaire ajouté: ${_commentController.text}');
+      } else {
+        request.fields['content'] =
+            ''; // Ajouter un contenu vide si aucun commentaire
+        print('Aucun commentaire ajouté');
+      }
+
+      // Add file if selected
+      if (_selectedFile != null) {
+        print('Fichier sélectionné: ${_selectedFile!.path}');
+        print('Type de fichier: $_fileExtension');
+
+        String mimeType = _fileExtension == 'pdf'
+            ? 'application/pdf'
+            : _fileExtension == 'doc'
+                ? 'application/msword'
+                : _fileExtension == 'docx'
+                    ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                    : 'application/octet-stream';
+
+        print('MIME type utilisé: $mimeType');
+
+        var file = await http.MultipartFile.fromPath(
+          'files',
+          _selectedFile!.path,
+          contentType: MediaType.parse(mimeType),
+        );
+        request.files.add(file);
+        print(
+            'Fichier ajouté à la requête avec MIME type: ${file.contentType}');
+      }
+
+      // Log the complete request
+      print('Requête complète:');
+      print('Fields: ${request.fields}');
+      print(
+          'Files: ${request.files.map((f) => '${f.filename} (${f.contentType})').join(', ')}');
+
+      // Send request
+      print('Envoi de la requête...');
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+      print('Réponse reçue - Status: ${response.statusCode}');
+      print('Corps de la réponse: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('Soumission réussie!');
+        _showSuccessDialog();
+      } else {
+        var errorData = json.decode(response.body);
+        String errorMessage = errorData['message'] ?? 'Une erreur est survenue';
+        print('Erreur de soumission: $errorMessage');
+        print('Détails de l\'erreur: ${errorData.toString()}');
+        throw Exception(errorMessage);
+      }
+    } catch (e) {
+      String errorMessage = e.toString().replaceAll('Exception: ', '');
+      print('Erreur lors de la soumission: $errorMessage');
+      print('Stack trace: ${e.toString()}');
+    } finally {
+      setState(() {
+        _isSubmitting = false;
+      });
+    }
+  }
+
   Future<void> _submitAssignment() async {
-    if (_uploadedFiles.isEmpty) {
-      _showErrorSnackBar('Veuillez ajouter au moins un fichier');
+    if (_selectedFile == null) {
+      _showErrorSnackBar('Veuillez ajouter un fichier');
       return;
     }
 
@@ -218,11 +341,7 @@ class _AssignmentSubmissionPageState extends State<AssignmentSubmissionPage> wit
     });
 
     try {
-      // Simuler l'upload et la soumission
-      await Future.delayed(const Duration(seconds: 3));
-
-      // Afficher le succès
-      _showSuccessDialog();
+      await uploadTask();
     } catch (e) {
       _showErrorSnackBar('Erreur lors de la soumission');
     } finally {
@@ -303,7 +422,8 @@ class _AssignmentSubmissionPageState extends State<AssignmentSubmissionPage> wit
 
   @override
   Widget build(BuildContext context) {
-    final bool isOverdue = _assignmentDetails['dueDate'].isBefore(DateTime.now());
+    final bool isOverdue =
+        _assignmentDetails['dueDate'].isBefore(DateTime.now());
     final bool isSubmitted = _assignmentDetails['submitted'] ?? false;
 
     return Scaffold(
@@ -436,7 +556,8 @@ class _AssignmentSubmissionPageState extends State<AssignmentSubmissionPage> wit
               ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(20),
@@ -505,7 +626,7 @@ class _AssignmentSubmissionPageState extends State<AssignmentSubmissionPage> wit
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Fichiers à soumettre',
+            'Fichier à soumettre',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -513,14 +634,16 @@ class _AssignmentSubmissionPageState extends State<AssignmentSubmissionPage> wit
             ),
           ),
           const SizedBox(height: 16),
-          GestureDetector(
-            onTap: _isUploading ? null : _pickFiles,
+          InkWell(
+            onTap: _pickFile,
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 border: Border.all(
-                  color: widget.course['color'].withOpacity(0.3),
+                  color: _selectedFile != null
+                      ? widget.course['color']
+                      : Colors.grey[300]!,
                   width: 2,
                   style: BorderStyle.solid,
                 ),
@@ -529,47 +652,69 @@ class _AssignmentSubmissionPageState extends State<AssignmentSubmissionPage> wit
               ),
               child: Column(
                 children: [
-                  if (_isUploading)
-                    CircularProgressIndicator(
-                      color: widget.course['color'],
-                    )
-                  else
-                    Icon(
-                      Icons.cloud_upload,
-                      size: 48,
-                      color: widget.course['color'],
-                    ),
+                  Icon(
+                    _selectedFile != null
+                        ? Icons.insert_drive_file
+                        : Icons.upload_file,
+                    size: 48,
+                    color: _selectedFile != null
+                        ? widget.course['color']
+                        : Colors.grey[600],
+                  ),
                   const SizedBox(height: 12),
                   Text(
-                    _isUploading ? 'Upload en cours...' : 'Cliquez pour ajouter des fichiers',
+                    _selectedFile != null
+                        ? _fileName!
+                        : 'Cliquez pour sélectionner un fichier',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: widget.course['color'],
+                      color: _selectedFile != null
+                          ? widget.course['color']
+                          : Colors.grey[600],
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Formats acceptés: ${_assignmentDetails['acceptedFormats'].join(', ').toUpperCase()}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
+                  if (_selectedFile != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Format: ${_fileExtension!.toUpperCase()}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
                     ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Taille max: ${_assignmentDetails['maxFileSize']} • Max ${_assignmentDetails['maxFiles']} fichiers',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
+                  ],
                 ],
               ),
             ),
           ),
+          const SizedBox(height: 8),
+          Text(
+            'Formats acceptés: PDF, DOC, DOCX',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+            ),
+          ),
+          if (_selectedFile != null) ...[
+            const SizedBox(height: 12),
+            Center(
+              child: TextButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _selectedFile = null;
+                    _fileName = null;
+                    _fileExtension = null;
+                  });
+                },
+                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                label: const Text(
+                  'Supprimer le fichier',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -723,7 +868,8 @@ class _AssignmentSubmissionPageState extends State<AssignmentSubmissionPage> wit
             controller: _commentController,
             maxLines: 4,
             decoration: InputDecoration(
-              hintText: 'Ajoutez des commentaires ou des notes pour votre professeur...',
+              hintText:
+                  'Ajoutez des commentaires ou des notes pour votre professeur...',
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(color: Colors.grey[300]!),

@@ -33,7 +33,8 @@ const getClassroomTasks = async (classroomId, userId, role) => {
                     submissionCount: record.get('submissionCount').toNumber()
                 };
             } else {
-                const submission = record.get('s') ? record.get('s').properties : null;
+                const submission = record.get('t') ? record.get('t').properties : null;
+                
                 return {
                     ...task,
                     submission

@@ -23,55 +23,23 @@ class _ClassroomPageState extends State<ClassroomPage>
   final bool _isLoading = false;
 
   late bool isProfessor = true;
-  // Données statiques pour la démonstration
+  List<Map<String, dynamic>> _courses = [];
 
-  List<dynamic> _courses = [];
-  // final List<Map<String, dynamic>> _courses = [
-  //   {
-  //     'id': '1',
-  //     'name': 'Programmation Orientée Objet',
-  //     'code': 'POO-2024',
-  //     'professor': 'Dr. Martin Dubois',
-  //     'color': Colors.blue,
-  //     'progress': 0.75,
-  //     'nextClass': DateTime.now().add(const Duration(days: 1, hours: 2)),
-  //     'students': 45,
-  //     'assignments': 3,
-  //   },
-  //   {
-  //     'id': '2',
-  //     'name': 'Mathématiques Avancées',
-  //     'code': 'MATH-301',
-  //     'professor': 'Prof. Sarah Laurent',
-  //     'color': Colors.green,
-  //     'progress': 0.60,
-  //     'nextClass': DateTime.now().add(const Duration(hours: 6)),
-  //     'students': 38,
-  //     'assignments': 2,
-  //   },
-  //   {
-  //     'id': '3',
-  //     'name': 'Base de Données',
-  //     'code': 'BDD-201',
-  //     'professor': 'Dr. Ahmed Benali',
-  //     'color': Colors.orange,
-  //     'progress': 0.85,
-  //     'nextClass': DateTime.now().add(const Duration(days: 2)),
-  //     'students': 42,
-  //     'assignments': 1,
-  //   },
-  //   {
-  //     'id': '4',
-  //     'name': 'Intelligence Artificielle',
-  //     'code': 'IA-401',
-  //     'professor': 'Prof. Emma Chen',
-  //     'color': Colors.purple,
-  //     'progress': 0.40,
-  //     'nextClass': DateTime.now().add(const Duration(days: 3, hours: 4)),
-  //     'students': 35,
-  //     'assignments': 4,
-  //   },
-  // ];
+  final List<Map<String, dynamic>> _upcomingAssignments = [
+    {
+      'id': '1',
+      'title': 'Projet Final POO',
+      'course': 'Programmation Orientée Objet',
+      'deadline': '2025-05-14T21:40:48.680Z',
+      'type': 'Projet',
+      'priority': 'high',
+    },
+    // ...
+  ];
+
+  final List<Map<String, dynamic>> _recentAnnouncements = [
+    // Your existing announcements data...
+  ];
 
   Future<void> fetchCourses() async {
     try {
@@ -81,22 +49,27 @@ class _ClassroomPageState extends State<ClassroomPage>
       );
 
       if (response.statusCode == 200) {
-        print("data importer");
-
-        // print(response.body);
         final Map<String, dynamic> responseData = json.decode(response.body);
-
+        print('Raw API Response: $responseData');
         final List<dynamic> courseDataWithoutColor = responseData['classrooms'];
 
-        final List<dynamic> courseData = courseDataWithoutColor.map((course) {
-          final randomColor = _generateRandomColor();
+        if (courseDataWithoutColor is! List) {
+          throw Exception(
+              'Expected a list of classrooms, got: ${courseDataWithoutColor.runtimeType}');
+        }
+
+        final List<Map<String, dynamic>> courseData =
+            courseDataWithoutColor.map((course) {
+          if (course is! Map) {
+            throw Exception(
+                'Expected a map for course, got: ${course.runtimeType}');
+          }
           return {
-            ...course,
-            'color': randomColor,
+            ...Map<String, dynamic>.from(course),
+            'color': _generateRandomColor(),
           };
         }).toList();
 
-        // print(profileData);
         setState(() {
           _courses = courseData;
         });
@@ -107,61 +80,18 @@ class _ClassroomPageState extends State<ClassroomPage>
   }
 
   Color _generateRandomColor() {
+    final List<Color> colors = [
+      const Color(0xFFE53935), // Red
+      const Color(0xFF1E88E5), // Blue
+      const Color(0xFF8E24AA), // Violet
+      const Color(0xFF43A047), // Green
+      const Color(0xFF795548), // Brown
+      const Color(0xFFFB8C00), // Orange
+    ];
+
     final Random random = Random();
-    return Color.fromARGB(
-      255,
-      random.nextInt(256),
-      random.nextInt(256),
-      random.nextInt(256),
-    );
+    return colors[random.nextInt(colors.length)];
   }
-
-  final List<Map<String, dynamic>> _upcomingAssignments = [
-    {
-      'id': '1',
-      'title': 'Projet Final POO',
-      'course': 'Programmation Orientée Objet',
-      'dueDate': DateTime.now().add(const Duration(days: 3)),
-      'type': 'Projet',
-      'priority': 'high',
-    },
-    {
-      'id': '2',
-      'title': 'Exercices Chapitre 5',
-      'course': 'Mathématiques Avancées',
-      'dueDate': DateTime.now().add(const Duration(days: 5)),
-      'type': 'Exercices',
-      'priority': 'medium',
-    },
-    {
-      'id': '3',
-      'title': 'TP Base de Données',
-      'course': 'Base de Données',
-      'dueDate': DateTime.now().add(const Duration(days: 7)),
-      'type': 'TP',
-      'priority': 'low',
-    },
-  ];
-
-  final List<Map<String, dynamic>> _recentAnnouncements = [
-    {
-      'id': '1',
-      'title': 'Changement d\'horaire',
-      'content': 'Le cours de POO de demain est reporté à 14h au lieu de 10h.',
-      'course': 'Programmation Orientée Objet',
-      'timestamp': DateTime.now().subtract(const Duration(hours: 2)),
-      'professor': 'Dr. Martin Dubois',
-    },
-    {
-      'id': '2',
-      'title': 'Nouveau matériel disponible',
-      'content':
-          'Les slides du chapitre 6 sont maintenant disponibles sur la plateforme.',
-      'course': 'Mathématiques Avancées',
-      'timestamp': DateTime.now().subtract(const Duration(hours: 5)),
-      'professor': 'Prof. Sarah Laurent',
-    },
-  ];
 
   void getUserRole() async {
     final prefs = await SharedPreferences.getInstance();
@@ -190,9 +120,10 @@ class _ClassroomPageState extends State<ClassroomPage>
     super.dispose();
   }
 
-  String _formatTimeUntil(DateTime dateTime) {
+  String _formatTimeUntil(dynamic deadline) {
+    final DateTime dateTime =
+        deadline is String ? DateTime.parse(deadline) : deadline;
     final Duration difference = dateTime.difference(DateTime.now());
-
     if (difference.inDays > 0) {
       return 'Dans ${difference.inDays} jour${difference.inDays > 1 ? 's' : ''}';
     } else if (difference.inHours > 0) {
@@ -220,99 +151,57 @@ class _ClassroomPageState extends State<ClassroomPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.white,
-        title: const Text(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        title: Text(
           'Classroom',
-          style: TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.bold,
-          ),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          icon: Icon(Icons.arrow_back,
+              color: Theme.of(context).colorScheme.onSurface),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.calendar_today, color: Colors.black87),
-            onPressed: () {
-              // Naviguer vers le calendrier
-            },
+            icon: Icon(Icons.calendar_today,
+                color: Theme.of(context).colorScheme.onSurface),
+            onPressed: () {},
           ),
           IconButton(
-            icon: const Icon(Icons.search, color: Colors.black87),
-            onPressed: () {
-              // Ouvrir la recherche
-            },
+            icon: Icon(Icons.search,
+                color: Theme.of(context).colorScheme.onSurface),
+            onPressed: () {},
           ),
         ],
       ),
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
+          ? const Center(child: CircularProgressIndicator())
           : FadeTransition(
               opacity: _animation,
               child: CustomScrollView(
                 physics: const BouncingScrollPhysics(),
                 slivers: [
-                  // Section des statistiques rapides
+                  SliverToBoxAdapter(child: _buildQuickStats()),
                   SliverToBoxAdapter(
-                    child: _buildQuickStats(),
-                  ),
-
-                  // Section des cours
-                  SliverToBoxAdapter(
-                    child: _buildSectionHeader('Mes Cours', Icons.book),
-                  ),
+                      child: _buildSectionHeader('Mes Cours', Icons.book)),
                   SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
+                        print(
+                            'Index: $index, Type: ${index.runtimeType}, Course: ${_courses[index]}');
                         final course = _courses[index];
                         return _buildCourseCard(course);
                       },
                       childCount: _courses.length,
                     ),
                   ),
-
-                  // Section des devoirs à venir
-
-                  if (!isProfessor) ...[
-                    SliverToBoxAdapter(
-                      child: _buildSectionHeader(
-                          'Devoirs à Rendre', Icons.assignment),
-                    ),
-                    SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final assignment = _upcomingAssignments[index];
-                          return _buildAssignmentCard(assignment);
-                        },
-                        childCount: _upcomingAssignments.length,
-                      ),
-                    ),
-                    SliverToBoxAdapter(
-                      child: _buildSectionHeader(
-                          'Annonces Récentes', Icons.campaign),
-                    ),
-                    SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final announcement = _recentAnnouncements[index];
-                          return _buildAnnouncementCard(announcement);
-                        },
-                        childCount: _recentAnnouncements.length,
-                      ),
-                    ),
-                  ],
-
-                  // Espace en bas
-                  const SliverToBoxAdapter(
-                    child: SizedBox(height: 80),
-                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 80)),
                 ],
               ),
             ),
@@ -329,7 +218,7 @@ class _ClassroomPageState extends State<ClassroomPage>
               'Cours Actifs',
               '${_courses.length}',
               Icons.book,
-              Colors.blue,
+              Theme.of(context).colorScheme.primary,
             ),
           ),
           const SizedBox(width: 12),
@@ -338,7 +227,7 @@ class _ClassroomPageState extends State<ClassroomPage>
               'Devoirs',
               '${_upcomingAssignments.length}',
               Icons.assignment,
-              Colors.orange,
+              Theme.of(context).colorScheme.secondary,
             ),
           ),
           const SizedBox(width: 12),
@@ -360,11 +249,11 @@ class _ClassroomPageState extends State<ClassroomPage>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -372,26 +261,19 @@ class _ClassroomPageState extends State<ClassroomPage>
       ),
       child: Column(
         children: [
-          Icon(
-            icon,
-            color: color,
-            size: 24,
-          ),
+          Icon(icon, color: color, size: 24),
           const SizedBox(height: 8),
           Text(
             value,
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
+                fontSize: 20, fontWeight: FontWeight.bold, color: color),
           ),
           const SizedBox(height: 4),
           Text(
             title,
             style: TextStyle(
               fontSize: 12,
-              color: Colors.grey[600],
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
             ),
             textAlign: TextAlign.center,
           ),
@@ -404,19 +286,38 @@ class _ClassroomPageState extends State<ClassroomPage>
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(
-            icon,
-            color: Colors.black87,
-            size: 20,
+          Row(
+            children: [
+              Icon(icon,
+                  color: Theme.of(context).colorScheme.onSurface, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+          GestureDetector(
+            onTap: _showJoinCourseDialog,
+            child: Row(
+              children: [
+                Icon(Icons.add,
+                    color: Theme.of(context).colorScheme.primary, size: 20),
+                const SizedBox(width: 4),
+                Text(
+                  "Rejoindre un cours",
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -424,15 +325,122 @@ class _ClassroomPageState extends State<ClassroomPage>
     );
   }
 
+  void _showJoinCourseDialog() {
+    final TextEditingController codeController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Rejoindre un cours',
+          style: Theme.of(context)
+              .textTheme
+              .titleLarge
+              ?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Entrez le code du cours pour rejoindre :',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: codeController,
+              decoration: InputDecoration(
+                labelText: 'Code du cours',
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                hintText: 'Ex: POO-2024',
+              ),
+              textCapitalization: TextCapitalization.characters,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Annuler',
+              style: TextStyle(
+                  color:
+                      Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => _joinCourse(codeController.text.trim()),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Confirmer'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _joinCourse(String courseCode) async {
+    if (courseCode.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Veuillez entrer un code de cours valide.'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      );
+      return;
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse('${Api.baseUrl}/classrooms/join'),
+        headers: {
+          'Authorization': 'Bearer ${widget.token}',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({'code': courseCode}),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        Navigator.pop(context);
+        await fetchCourses();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Cours rejoint avec succès !'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        );
+      } else {
+        throw Exception('Échec de l\'inscription au cours');
+      }
+    } catch (e) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur: ${e.toString()}'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      );
+    }
+  }
+
   Widget _buildCourseCard(Map<dynamic, dynamic> course) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Card(
         elevation: 2,
-        shadowColor: Colors.black26,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shadowColor: Theme.of(context).colorScheme.shadow,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: InkWell(
           onTap: () {
             Navigator.push(
@@ -459,22 +467,11 @@ class _ClassroomPageState extends State<ClassroomPage>
                       height: 50,
                       decoration: BoxDecoration(
                         color: course['color'].withOpacity(0.1),
-                        // color: Colors.blue.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: course['color'].withOpacity(0.3),
-                          // color: Colors.blue.withOpacity(0.3),
-
-                          width: 2,
-                        ),
+                            color: course['color'].withOpacity(0.3), width: 2),
                       ),
-                      child: Icon(
-                        Icons.book,
-                        color: course['color'],
-                        // color: Colors.blue,
-
-                        size: 24,
-                      ),
+                      child: Icon(Icons.book, color: course['color'], size: 24),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -482,43 +479,38 @@ class _ClassroomPageState extends State<ClassroomPage>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            course['name'],
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            course['name'] ?? 'N/A',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'code',
-                            // course['code'],
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
-                            ),
+                            course['code'] ?? 'N/A',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withOpacity(0.6),
+                                ),
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            course['description'],
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[500],
-                            ),
+                            course['description'] ?? 'Aucune description',
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withOpacity(0.5),
+                                    ),
                           ),
                         ],
                       ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        // Text(
-                        //   _formatTimeUntil(course['nextClass']),
-                        //   style: TextStyle(
-                        //     fontSize: 12,
-                        //     color: Colors.grey[500],
-                        //   ),
-                        // ),
-                      ],
                     ),
                   ],
                 ),
@@ -533,19 +525,14 @@ class _ClassroomPageState extends State<ClassroomPage>
 
   Widget _buildAssignmentCard(Map<String, dynamic> assignment) {
     final Color priorityColor = _getPriorityColor(assignment['priority']);
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Card(
         elevation: 1,
-        shadowColor: Colors.black26,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shadowColor: Theme.of(context).colorScheme.shadow,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: InkWell(
-          onTap: () {
-            // Naviguer vers les détails du devoir
-          },
+          onTap: () {},
           borderRadius: BorderRadius.circular(12),
           child: Padding(
             padding: const EdgeInsets.all(12),
@@ -566,18 +553,20 @@ class _ClassroomPageState extends State<ClassroomPage>
                     children: [
                       Text(
                         assignment['title'],
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         assignment['course'],
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withOpacity(0.6),
+                            ),
                       ),
                       const SizedBox(height: 4),
                       Row(
@@ -585,15 +574,21 @@ class _ClassroomPageState extends State<ClassroomPage>
                           Icon(
                             Icons.access_time,
                             size: 12,
-                            color: Colors.grey[500],
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withOpacity(0.5),
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            _formatTimeUntil(assignment['dueDate']),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[500],
-                            ),
+                            _formatTimeUntil(assignment['deadline']),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withOpacity(0.5),
+                                    ),
                           ),
                         ],
                       ),
@@ -607,17 +602,14 @@ class _ClassroomPageState extends State<ClassroomPage>
                     color: priorityColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: priorityColor.withOpacity(0.3),
-                      width: 1,
-                    ),
+                        color: priorityColor.withOpacity(0.3), width: 1),
                   ),
                   child: Text(
                     assignment['type'],
                     style: TextStyle(
-                      fontSize: 12,
-                      color: priorityColor,
-                      fontWeight: FontWeight.w500,
-                    ),
+                        fontSize: 12,
+                        color: priorityColor,
+                        fontWeight: FontWeight.w500),
                   ),
                 ),
               ],
@@ -633,14 +625,10 @@ class _ClassroomPageState extends State<ClassroomPage>
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Card(
         elevation: 1,
-        shadowColor: Colors.black26,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shadowColor: Theme.of(context).colorScheme.shadow,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: InkWell(
-          onTap: () {
-            // Naviguer vers les détails de l'annonce
-          },
+          onTap: () {},
           borderRadius: BorderRadius.circular(12),
           child: Padding(
             padding: const EdgeInsets.all(12),
@@ -649,57 +637,59 @@ class _ClassroomPageState extends State<ClassroomPage>
               children: [
                 Row(
                   children: [
-                    Icon(
-                      Icons.campaign,
-                      color: Colors.blue[600],
-                      size: 20,
-                    ),
+                    Icon(Icons.campaign,
+                        color: Theme.of(context).colorScheme.primary, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         announcement['title'],
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                     ),
                     Text(
                       _formatTimeUntil(announcement['timestamp'])
                           .replaceAll('Dans ', 'Il y a '),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[500],
-                      ),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withOpacity(0.5),
+                          ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
                 Text(
                   announcement['content'],
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[700],
-                  ),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withOpacity(0.7),
+                      ),
                 ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
                     Text(
                       announcement['course'],
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.blue[600],
-                        fontWeight: FontWeight.w500,
-                      ),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w500,
+                          ),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       '• ${announcement['professor']}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[500],
-                      ),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withOpacity(0.5),
+                          ),
                     ),
                   ],
                 ),

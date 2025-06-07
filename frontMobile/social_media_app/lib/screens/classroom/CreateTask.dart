@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:io';
+import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
+import 'package:social_media_app/core/Api.dart';
 
 class CreateAssignmentPage extends StatefulWidget {
   final Map<dynamic, dynamic> course;
@@ -40,6 +45,11 @@ class _CreateAssignmentPageState extends State<CreateAssignmentPage>
 
   // Options prédéfinies pour les scores
   final List<int> _commonScores = [10, 15, 20, 25, 50, 100];
+
+  // Ajout des variables pour le fichier
+  File? _selectedFile;
+  String? _fileName;
+  String? _fileExtension;
 
   @override
   void initState() {
@@ -140,14 +150,43 @@ class _CreateAssignmentPageState extends State<CreateAssignmentPage>
 
   String _formatDate(DateTime date) {
     const months = [
-      'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun',
-      'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'
+      'Jan',
+      'Fév',
+      'Mar',
+      'Avr',
+      'Mai',
+      'Jun',
+      'Jul',
+      'Aoû',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Déc'
     ];
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
   String _formatTime(TimeOfDay time) {
     return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _pickFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx'],
+      );
+
+      if (result != null) {
+        setState(() {
+          _selectedFile = File(result.files.single.path!);
+          _fileName = result.files.single.name;
+          _fileExtension = result.files.single.extension;
+        });
+      }
+    } catch (e) {
+      _showErrorSnackBar('Erreur lors de la sélection du fichier: $e');
+    }
   }
 
   Future<void> _createAssignment() async {
@@ -170,21 +209,50 @@ class _CreateAssignmentPageState extends State<CreateAssignmentPage>
     });
 
     try {
-      // Préparer les données pour la requête Neo4j
-      final assignmentData = {
-        'professorId': widget.professorId,
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${Api.baseUrl}/tasks/${widget.classroomId}'),
+      );
+
+      // Ajouter les headers
+      request.headers.addAll({
+        'Authorization': 'Bearer ${widget.token}',
+        'Accept': 'application/json',
+      });
+
+      // Ajouter le fichier s'il est sélectionné
+      if (_selectedFile != null) {
+        var file = await http.MultipartFile.fromPath(
+          'attachments',
+          _selectedFile!.path,
+          contentType: MediaType(
+            _fileExtension == 'pdf' ? 'application' : 'application',
+            _fileExtension == 'pdf'
+                ? 'pdf'
+                : 'vnd.openxmlformats-officedocument.wordprocessingml.document',
+          ),
+        );
+        request.files.add(file);
+      }
+
+      // Ajouter les autres données
+      request.fields.addAll({
         'classroomId': widget.classroomId,
         'title': _titleController.text.trim(),
         'description': _descriptionController.text.trim(),
         'deadline': _deadline!.toIso8601String(),
-        'maxScore': int.parse(_maxScoreController.text),
-      };
+        'maxScore': _maxScoreController.text,
+      });
 
-      // TODO: Remplacer par votre appel API réel
-      await _simulateApiCall(assignmentData);
+      final response = await request.send();
+      final responseData = await response.stream.bytesToString();
 
-      // Afficher le succès et retourner
-      _showSuccessDialog();
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        _showSuccessDialog();
+      } else {
+        throw Exception(
+            'Erreur lors de la création du devoir: ${responseData}');
+      }
     } catch (e) {
       _showErrorSnackBar('Erreur lors de la création du devoir: $e');
     } finally {
@@ -197,7 +265,7 @@ class _CreateAssignmentPageState extends State<CreateAssignmentPage>
   Future<void> _simulateApiCall(Map<String, dynamic> data) async {
     // Simulation d'un appel API
     await Future.delayed(const Duration(seconds: 2));
-    
+
     // Ici vous pouvez ajouter votre logique d'appel à l'API
     // qui exécutera la requête Neo4j:
     /*
@@ -214,7 +282,7 @@ class _CreateAssignmentPageState extends State<CreateAssignmentPage>
     CREATE (c)-[:HAS_TASK]->(t)
     RETURN t
     */
-    
+
     print('Données à envoyer: $data');
   }
 
@@ -308,6 +376,10 @@ class _CreateAssignmentPageState extends State<CreateAssignmentPage>
 
                 // Description
                 _buildDescriptionSection(),
+                const SizedBox(height: 20),
+
+                // Fichier du devoir
+                _buildFileSection(),
                 const SizedBox(height: 20),
 
                 // Date limite
@@ -512,7 +584,8 @@ class _CreateAssignmentPageState extends State<CreateAssignmentPage>
             controller: _descriptionController,
             maxLines: 6,
             decoration: InputDecoration(
-              hintText: 'Décrivez les objectifs, les consignes et les critères d\'évaluation du devoir...',
+              hintText:
+                  'Décrivez les objectifs, les consignes et les critères d\'évaluation du devoir...',
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(color: Colors.grey[300]!),
@@ -532,6 +605,125 @@ class _CreateAssignmentPageState extends State<CreateAssignmentPage>
               }
               return null;
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFileSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.attach_file,
+                color: widget.course['color'],
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Fichier du devoir',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          InkWell(
+            onTap: _pickFile,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: _selectedFile != null
+                      ? widget.course['color']
+                      : Colors.grey[300]!,
+                  width: 2,
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _selectedFile != null
+                        ? Icons.insert_drive_file
+                        : Icons.upload_file,
+                    color: _selectedFile != null
+                        ? widget.course['color']
+                        : Colors.grey[600],
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _selectedFile != null
+                              ? _fileName!
+                              : 'Cliquez pour sélectionner un fichier',
+                          style: TextStyle(
+                            color: _selectedFile != null
+                                ? Colors.black87
+                                : Colors.grey[600],
+                            fontWeight: _selectedFile != null
+                                ? FontWeight.w500
+                                : FontWeight.normal,
+                          ),
+                        ),
+                        if (_selectedFile != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Format: ${_fileExtension!.toUpperCase()}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  if (_selectedFile != null)
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.red),
+                      onPressed: () {
+                        setState(() {
+                          _selectedFile = null;
+                          _fileName = null;
+                          _fileExtension = null;
+                        });
+                      },
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Formats acceptés: PDF, DOC, DOCX',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+            ),
           ),
         ],
       ),
@@ -780,7 +972,8 @@ class _CreateAssignmentPageState extends State<CreateAssignmentPage>
                   _maxScoreController.text = score.toString();
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: widget.course['color'].withOpacity(0.1),
                     borderRadius: BorderRadius.circular(16),
@@ -838,7 +1031,11 @@ class _CreateAssignmentPageState extends State<CreateAssignmentPage>
             : const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.add_task, size: 20,color: Colors.white,),
+                  Icon(
+                    Icons.add_task,
+                    size: 20,
+                    color: Colors.white,
+                  ),
                   SizedBox(width: 8),
                   Text(
                     'Créer le devoir',
