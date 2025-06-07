@@ -49,6 +49,14 @@ interface PostData {
   visibility: "public" | "friends" | "private"
 }
 
+// Type for connection data (Adapted from friends array and backend response)
+interface ConnectionData {
+  id: string
+  name: string
+  role: string
+  profilePhoto?: string // Assuming backend might return profilePhoto filename
+}
+
 // Formatage de la date
 const formatDate = (dateObj: any) => {
   const year = dateObj.year.low
@@ -218,14 +226,19 @@ export default function MyProfilePage() {
     type: "success" | "error"
   } | null>(null)
 
-  // New states for posts (Copied from home-page.tsx)
+  // States for posts
   const [userPosts, setUserPosts] = useState<PostData[]>([])
-  const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(true)
+  const [postsPage, setPostsPage] = useState(1)
+  const [hasMorePosts, setHasMorePosts] = useState(true)
   const [isLoadingPosts, setIsLoadingPosts] = useState(false)
   const [postsError, setPostsError] = useState<string | null>(null)
 
-  const observer = useRef<IntersectionObserver | null>(null) // For infinite scroll
+  // New states for connections
+  const [userConnections, setUserConnections] = useState<ConnectionData[]>([])
+  const [isLoadingConnections, setIsLoadingConnections] = useState(false)
+  const [connectionsError, setConnectionsError] = useState<string | null>(null)
+
+  const postsObserver = useRef<IntersectionObserver | null>(null) // For infinite scroll for posts
 
   const showToast = (message: string, type: "success" | "error") => {
     setToast({ visible: true, message, type })
@@ -266,7 +279,7 @@ export default function MyProfilePage() {
     fetchProfile()
   }, [])
 
-  // Fetch user-specific posts (Adapted from home-page.tsx's fetchPosts)
+  // Fetch user-specific posts
   const fetchUserPosts = useCallback(
     async (pageNumber: number) => {
       if (!profile?.id_user) return // Ensure profile ID is available
@@ -303,7 +316,7 @@ export default function MyProfilePage() {
             author: {
               id: apiPost.author.id || "unknown",
               name: `${apiPost.author.lastName} ${apiPost.author.firstName}`,
-              avatar: apiPost.author.profilePhoto ? `http://localhost:8080/upload/${apiPost.author.profilePhoto}` : "", // Use actual avatar if available
+              avatar: apiPost.author.profilePhoto ? `http://localhost:8080/upload/${apiPost.author.profilePhoto}` : "",
               title:
                 apiPost.author.role === "professor"
                   ? `Professeur de ${apiPost.author.department || "non spécifié"}`
@@ -327,7 +340,7 @@ export default function MyProfilePage() {
         } else {
           setUserPosts((prevPosts) => [...prevPosts, ...newPosts])
         }
-        setHasMore(newPosts.length === limit)
+        setHasMorePosts(newPosts.length === limit)
       } catch (err: any) {
         console.error("Error fetching user posts:", err)
         setPostsError(err.message)
@@ -336,7 +349,7 @@ export default function MyProfilePage() {
       }
     },
     [profile],
-  ) // Dependency on profile to ensure id_user is available
+  )
 
   // Initial posts load when profile is ready
   useEffect(() => {
@@ -345,29 +358,73 @@ export default function MyProfilePage() {
     }
   }, [profile, fetchUserPosts])
 
-  // Infinite scroll observer (Copied from home-page.tsx)
+  // Infinite scroll observer for posts
   const lastPostElementRef = useCallback(
     (node: HTMLDivElement | null) => {
-      if (isLoadingPosts || !hasMore) return
-      if (observer.current) observer.current.disconnect()
+      if (isLoadingPosts || !hasMorePosts) return
+      if (postsObserver.current) postsObserver.current.disconnect()
 
-      observer.current = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoadingPosts) {
-          setPage((prevPage) => prevPage + 1)
+      postsObserver.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && hasMorePosts && !isLoadingPosts) {
+          setPostsPage((prevPage) => prevPage + 1)
         }
       })
 
-      if (node) observer.current.observe(node)
+      if (node) postsObserver.current.observe(node)
     },
-    [isLoadingPosts, hasMore],
+    [isLoadingPosts, hasMorePosts],
   )
 
-  // Load more posts when page changes (Copied from home-page.tsx)
+  // Load more posts when postsPage changes
   useEffect(() => {
-    if (page > 1) {
-      fetchUserPosts(page)
+    if (postsPage > 1) {
+      fetchUserPosts(postsPage)
     }
-  }, [page, fetchUserPosts])
+  }, [postsPage, fetchUserPosts])
+
+  // Fetch user connections
+  useEffect(() => {
+    if (profile?.id_user) {
+      setIsLoadingConnections(true)
+      setConnectionsError(null)
+      const fetchConnections = async () => {
+        try {
+          const response = await fetch("http://localhost:8080/connections", {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+          })
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch connections")
+          }
+
+          const data = await response.json()
+
+          if (!data.success) {
+            throw new Error(data.message || "Failed to fetch connections")
+          }
+
+          // Map backend connections to ConnectionData interface
+          const mappedConnections: ConnectionData[] = data.connections.map((conn: any) => ({
+            id: conn.id_user, // Assuming id_user is the unique identifier
+            name: `${conn.firstName} ${conn.lastName}`,
+            role: conn.role,
+            profilePhoto: conn.profilePhoto, // Assuming this field exists
+          }))
+          setUserConnections(mappedConnections)
+        } catch (err: any) {
+          console.error("Error fetching connections:", err)
+          setConnectionsError(err.message)
+        } finally {
+          setIsLoadingConnections(false)
+        }
+      }
+      fetchConnections()
+    }
+  }, [profile]) // Fetch connections when profile is loaded
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -445,16 +502,6 @@ export default function MyProfilePage() {
         </div>
       </div>
     )
-
-  // Données fictives pour les amis
-  const friends = [
-    { id: 1, name: "Sophie Martin", role: "Étudiante en Informatique" },
-    { id: 2, name: "Thomas Dubois", role: "Étudiant en Mathématiques" },
-    { id: 3, name: "Emma Petit", role: "Étudiante en Physique" },
-    { id: 4, name: "Lucas Moreau", role: "Étudiant en Informatique" },
-    { id: 5, name: "Léa Bernard", role: "Étudiante en Chimie" },
-    { id: 6, name: "Hugo Leroy", role: "Étudiant en Informatique" },
-  ]
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
@@ -712,7 +759,7 @@ export default function MyProfilePage() {
                   </div>
                 )}
 
-                {!hasMore && !isLoadingPosts && userPosts.length > 0 && (
+                {!hasMorePosts && !isLoadingPosts && userPosts.length > 0 && (
                   <div className="text-center py-4 text-gray-500 dark:text-gray-400">
                     Vous avez atteint la fin des publications
                   </div>
@@ -784,7 +831,7 @@ export default function MyProfilePage() {
           {activeTab === "friends" && (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Amis ({friends.length})</h2>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Amis ({userConnections.length})</h2>
                 <div className="relative">
                   <input
                     type="text"
@@ -796,29 +843,50 @@ export default function MyProfilePage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {friends.map((friend) => (
-                  <div
-                    key={friend.id}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
-                  >
-                    <div className="h-12 w-12 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-                      <Image
-                        alt={friend.name}
-                        className="h-full w-full object-cover"
-                        src="/placeholder.svg" // Using a generic placeholder for friends
-                        width={48} // Corresponds to h-12 w-12 (48px) container
-                        height={48}
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-gray-900 dark:text-white truncate">{friend.name}</h4>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{friend.role}</p>
-                    </div>
-                    <button className="p-1.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-                      <MessageSquare className="h-4 w-4" />
-                    </button>
+                {isLoadingConnections ? (
+                  <div className="flex justify-center py-4 col-span-full">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
                   </div>
-                ))}
+                ) : connectionsError ? (
+                  <div className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300 col-span-full">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4" />
+                      <p>{connectionsError}</p>
+                    </div>
+                  </div>
+                ) : userConnections.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400 col-span-full">
+                    Aucun ami à afficher
+                  </div>
+                ) : (
+                  userConnections.map((friend) => (
+                    <div
+                      className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
+                    >
+                      <div className="h-12 w-12 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                        
+                        <Image
+                          alt={friend.name}
+                          className="h-full w-full object-cover"
+                          src={
+                            friend.profilePhoto
+                              ? `http://localhost:8080/upload/${friend.profilePhoto}`
+                              : "/placeholder.svg"
+                          }
+                          width={48} // Corresponds to h-12 w-12 (48px) container
+                          height={48}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-gray-900 dark:text-white truncate">{friend.name}</h4>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{friend.role}</p>
+                      </div>
+                      <button className="p-1.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                        <MessageSquare className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}
