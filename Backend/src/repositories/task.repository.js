@@ -14,37 +14,54 @@ class TaskRepository extends BaseRepository {
                 updatedAt: datetime()
             })
             CREATE (c)-[:HAS_TASK]->(t)
+            WITH t
+            UNWIND $attachments AS attachment
+            CREATE (a:Attachment {
+                id: randomUUID(),
+                filename: attachment.filename,
+                originalName: attachment.originalName,
+                mimetype: attachment.mimetype,
+                size: attachment.size,
+                path: attachment.path,
+                createdAt: datetime()
+            })
+            CREATE (t)-[:HAS_ATTACHMENT]->(a)
             RETURN t`;
-
+    
         const records = await this.executeQuery(query, {
             professorId,
             classroomId,
             title: taskData.title,
             description: taskData.description,
             deadline: taskData.deadline,
-            maxScore: taskData.maxScore
+            maxScore: taskData.maxScore,
+            attachments: taskData.attachments || []
         });
-
+    
         return records.length > 0 ? records[0].get('t').properties : null;
     }
 
     async getClassroomTasks(classroomId, userId, role) {
         let query;
         let params = { classroomId, userId };
-
+    
         if (role === 'professor') {
             query = `
                 MATCH (c:Classroom {id_classroom: $classroomId})-[:HAS_TASK]->(t:Task)
+                OPTIONAL MATCH (t)-[:HAS_ATTACHMENT]->(a:Attachment)
                 OPTIONAL MATCH (t)<-[:SUBMITTED]-(s:Submission)
-                RETURN t, count(s) as submissionCount`;
+                WITH t, collect(a) as attachments, count(s) as submissionCount
+                RETURN t, attachments, submissionCount`;
         } else {
             query = `
                 MATCH (s:User {id_user: $userId})-[:ENROLLED_IN]->(c:Classroom {id_classroom: $classroomId})
                 MATCH (c)-[:HAS_TASK]->(t:Task)
+                OPTIONAL MATCH (t)-[:HAS_ATTACHMENT]->(a:Attachment)
                 OPTIONAL MATCH (t)<-[:SUBMITTED]-(sub:Submission {student_id: $userId})
-                RETURN t, sub`;
+                WITH t, collect(a) as attachments, sub
+                RETURN t, attachments, sub`;
         }
-
+    
         const records = await this.executeQuery(query, params);
         return records;
     }
@@ -55,7 +72,7 @@ class TaskRepository extends BaseRepository {
             CREATE (sub:Submission {
                 id_submission: randomUUID(),
                 content: $content,
-                filePath: $filePath,
+                attachments: $attachments,
                 submittedAt: datetime(),
                 status: 'submitted',
                 student_id: $studentId
@@ -68,7 +85,7 @@ class TaskRepository extends BaseRepository {
             taskId,
             studentId,
             content: submissionData.content,
-            filePath: submissionData.filePath
+            attachments: submissionData.attachments || []
         });
 
         return records.length > 0 ? records[0].get('sub').properties : null;
