@@ -216,6 +216,36 @@ class ClassroomRepository extends BaseRepository {
         const records = await this.executeQuery(query, { classroomId });
         return records[0].get('deleted').toNumber();
     }
+
+    async enrollStudentByCode(studentId, code) {
+        const verifyQuery = `
+            MATCH (c:Classroom {code: $code})
+            RETURN c`;
+    
+        const verifyRecords = await this.executeQuery(verifyQuery, { code });
+        if (verifyRecords.length === 0) {
+            return null;
+        }
+    
+        const classroom = verifyRecords[0].get('c').properties;
+        
+        const enrollmentCheckQuery = `
+            MATCH (s:User {id_user: $studentId})-[r:ENROLLED_IN]->(c:Classroom {code: $code})
+            RETURN r`;
+    
+        const checkRecords = await this.executeQuery(enrollmentCheckQuery, { studentId, code });
+        if (checkRecords.length > 0) {
+            return 'already_enrolled';
+        }
+    
+        const enrollQuery = `
+            MATCH (c:Classroom {code: $code}), (s:User {id_user: $studentId, role: 'student'})
+            CREATE (s)-[:ENROLLED_IN]->(c)
+            RETURN c, s`;
+    
+        const records = await this.executeQuery(enrollQuery, { code, studentId });
+        return records.length > 0 ? { status: 'success', classroom } : null;
+    }
 }
 
 module.exports = ClassroomRepository;

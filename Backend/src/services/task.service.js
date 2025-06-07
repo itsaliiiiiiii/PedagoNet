@@ -27,9 +27,12 @@ const getClassroomTasks = async (classroomId, userId, role) => {
         const records = await taskRepository.getClassroomTasks(classroomId, userId, role);
         const tasks = records.map(record => {
             const task = record.get('t').properties;
+            const attachments = record.get('attachments');
+            
             if (role === 'professor') {
                 return {
                     ...task,
+                    attachments,
                     submissionCount: record.get('submissionCount').toNumber()
                 };
             } else {
@@ -37,6 +40,7 @@ const getClassroomTasks = async (classroomId, userId, role) => {
                 
                 return {
                     ...task,
+                    attachments,
                     submission
                 };
             }

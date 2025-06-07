@@ -68,10 +68,10 @@ router.delete('/:id', authenticateToken, checkProfessorRole, async (req, res) =>
     }
 });
 
-// Enroll student in classroom
-router.post('/:id/enroll', authenticateToken, async (req, res) => {
+// Enroll student in classroom using code
+router.post('/enroll', authenticateToken, async (req, res) => {
     try {
-        const result = await enrollStudent(req.params.id, req.user.id_user, req.body.code);
+        const result = await enrollStudentByCode(req.user.id_user, req.body.code);
         res.status(result.success ? 200 : 400).json(result);
     } catch (error) {
         console.error('Student enrollment error:', error);
