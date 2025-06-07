@@ -44,20 +44,24 @@ class TaskRepository extends BaseRepository {
     async getClassroomTasks(classroomId, userId, role) {
         let query;
         let params = { classroomId, userId };
-
+    
         if (role === 'professor') {
             query = `
                 MATCH (c:Classroom {id_classroom: $classroomId})-[:HAS_TASK]->(t:Task)
+                OPTIONAL MATCH (t)-[:HAS_ATTACHMENT]->(a:Attachment)
                 OPTIONAL MATCH (t)<-[:SUBMITTED]-(s:Submission)
-                RETURN t, count(s) as submissionCount`;
+                WITH t, collect(a) as attachments, count(s) as submissionCount
+                RETURN t, attachments, submissionCount`;
         } else {
             query = `
                 MATCH (s:User {id_user: $userId})-[:ENROLLED_IN]->(c:Classroom {id_classroom: $classroomId})
                 MATCH (c)-[:HAS_TASK]->(t:Task)
+                OPTIONAL MATCH (t)-[:HAS_ATTACHMENT]->(a:Attachment)
                 OPTIONAL MATCH (t)<-[:SUBMITTED]-(sub:Submission {student_id: $userId})
-                RETURN t, sub`;
+                WITH t, collect(a) as attachments, sub
+                RETURN t, attachments, sub`;
         }
-
+    
         const records = await this.executeQuery(query, params);
         return records;
     }
