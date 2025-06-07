@@ -14,16 +14,20 @@ const createClassroom = async (professorId, classroomData) => {
     }
 };
 
-const enrollStudent = async (classroomId, studentId, code) => {
+const enrollStudentByCode = async (studentId, code) => {
     try {
-        const result = await classroomRepository.enrollStudent(classroomId, studentId, code);
+        const result = await classroomRepository.enrollStudentByCode(studentId, code);
         if (!result) {
-            return { success: false, message: 'Invalid classroom code or classroom not found' };
+            return { success: false, message: 'Invalid classroom code' };
         }
         if (result === 'already_enrolled') {
-            return { success: false, message: 'Student is already enrolled in this classroom' };
+            return { success: false, message: 'You are already enrolled in this classroom' };
         }
-        return { success: true, message: 'Student enrolled successfully' };
+        return {
+            success: true,
+            message: 'Successfully enrolled in classroom',
+            classroom: result.classroom
+        };
     } catch (error) {
         console.error('Student enrollment error:', error);
         return { success: false, message: 'Internal server error' };
@@ -114,16 +118,16 @@ const updateClassroom = async (classroomId, professorId, updateData) => {
     try {
         const updatedClassroom = await classroomRepository.updateClassroom(classroomId, professorId, updateData);
         if (!updatedClassroom) {
-            return { 
-                success: false, 
-                message: 'Classroom not found or you do not have permission to update it' 
+            return {
+                success: false,
+                message: 'Classroom not found or you do not have permission to update it'
             };
         }
 
-        return { 
-            success: true, 
+        return {
+            success: true,
             message: 'Classroom updated successfully',
-            classroom: updatedClassroom 
+            classroom: updatedClassroom
         };
     } catch (error) {
         console.error('Classroom update error:', error);
@@ -135,14 +139,14 @@ const deleteClassroom = async (classroomId, professorId) => {
     try {
         const deletedCount = await classroomRepository.deleteClassroom(classroomId, professorId);
         if (deletedCount === null) {
-            return { 
-                success: false, 
-                message: 'Classroom not found or you do not have permission to delete it' 
+            return {
+                success: false,
+                message: 'Classroom not found or you do not have permission to delete it'
             };
         }
-        
-        return { 
-            success: deletedCount > 0, 
+
+        return {
+            success: deletedCount > 0,
             message: deletedCount > 0 ? 'Classroom and associated tasks deleted successfully' : 'Failed to delete classroom'
         };
     } catch (error) {
@@ -160,6 +164,6 @@ module.exports = {
     getAllClassrooms,
     updateClassroom,
     deleteClassroom, getEnrolledStudents
-    , unenrollStudent
-    
+    , unenrollStudent, enrollStudentByCode
+
 };
