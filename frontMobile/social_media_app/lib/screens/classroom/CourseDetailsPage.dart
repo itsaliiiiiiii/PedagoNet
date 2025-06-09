@@ -124,7 +124,7 @@ class _CourseDetailsPageState extends State<CourseDetailsPage> {
               'id_task': task['id_task']?.toString() ?? '',
               'title': task['title'] ?? '',
               'description': task['description'] ?? '',
-              'attachments':task['attachments'],
+              'attachments': task['attachments'],
               'dueDate': dueDate,
               'status': 'Non commencé',
               'points': task['maxScore'] ?? 0,
@@ -244,38 +244,16 @@ class _CourseDetailsPageState extends State<CourseDetailsPage> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          'code',
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 16,
+                        if (widget.isProfessor) ...[
+                          Text(
+                            "Code : ${widget.course['code'].toString()}",
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 16,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.person,
-                              color: Colors.white70,
-                              size: 16,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'professor',
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 14,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            const Icon(
-                              Icons.people,
-                              color: Colors.white70,
-                              size: 16,
-                            ),
-                            const SizedBox(width: 4),
-                          ],
-                        ),
+                        ],
+                        
                       ],
                     ),
                   ),

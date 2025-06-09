@@ -639,7 +639,8 @@ class _AssignmentSubmissionPageState extends State<AssignmentSubmissionPage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 20),
-          if (_assignmentDetails['attachments'] != null) ...[
+          if (_assignmentDetails['attachments'] != null &&
+              _assignmentDetails['attachments'].length != 0) ...[
             const Text(
               'Fichier joint',
               style: TextStyle(

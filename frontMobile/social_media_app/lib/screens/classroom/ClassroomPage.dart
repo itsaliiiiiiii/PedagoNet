@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:social_media_app/core/Api.dart';
 import 'package:social_media_app/screens/classroom/CourseDetailsPage.dart';
 import 'package:http/http.dart' as http;
+import 'package:social_media_app/screens/classroom/CreateCoursePage.dart';
 
 class ClassroomPage extends StatefulWidget {
   final String token;
@@ -182,7 +183,7 @@ class _ClassroomPageState extends State<ClassroomPage>
               child: CustomScrollView(
                 physics: const BouncingScrollPhysics(),
                 slivers: [
-                  SliverToBoxAdapter(child: _buildQuickStats()),
+                  // SliverToBoxAdapter(child: _buildQuickStats()),
                   SliverToBoxAdapter(
                       child: _buildSectionHeader('Mes Cours', Icons.book)),
                   SliverList(
@@ -207,6 +208,7 @@ class _ClassroomPageState extends State<ClassroomPage>
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Expanded(
             child: _buildStatCard(
@@ -214,24 +216,6 @@ class _ClassroomPageState extends State<ClassroomPage>
               '${_courses.length}',
               Icons.book,
               Theme.of(context).colorScheme.primary,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _buildStatCard(
-              'Devoirs',
-              '${_upcomingAssignments.length}',
-              Icons.assignment,
-              Theme.of(context).colorScheme.secondary,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _buildStatCard(
-              'Annonces',
-              '${_recentAnnouncements.length}',
-              Icons.campaign,
-              Colors.green,
             ),
           ),
         ],
@@ -298,23 +282,51 @@ class _ClassroomPageState extends State<ClassroomPage>
               ),
             ],
           ),
-          GestureDetector(
-            onTap: _showJoinCourseDialog,
-            child: Row(
-              children: [
-                Icon(Icons.add,
-                    color: Theme.of(context).colorScheme.primary, size: 20),
-                const SizedBox(width: 4),
-                Text(
-                  "Rejoindre un cours",
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.w500,
+          isProfessor
+              ? GestureDetector(
+                  onTap: () => {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            CreateClassroomPage(token: widget.token),
+                      ),
+                    )
+                  },
+                  child: Row(
+                    children: [
+                      Icon(Icons.add,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 20),
+                      const SizedBox(width: 4),
+                      Text(
+                        "Créer un cour ",
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : GestureDetector(
+                  onTap: _showJoinCourseDialog,
+                  child: Row(
+                    children: [
+                      Icon(Icons.add,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 20),
+                      const SizedBox(width: 4),
+                      Text(
+                        "Rejoindre un cours",
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -393,13 +405,15 @@ class _ClassroomPageState extends State<ClassroomPage>
 
     try {
       final response = await http.post(
-        Uri.parse('${Api.baseUrl}/classrooms/join'),
+        Uri.parse('${Api.baseUrl}/classrooms/enroll'),
         headers: {
           'Authorization': 'Bearer ${widget.token}',
           'Content-Type': 'application/json',
         },
         body: json.encode({'code': courseCode}),
       );
+
+      print(response.body);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         Navigator.pop(context);
@@ -481,18 +495,20 @@ class _ClassroomPageState extends State<ClassroomPage>
                                 ?.copyWith(fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 2),
-                          Text(
-                            course['code'] ?? 'N/A',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurface
-                                      .withOpacity(0.6),
-                                ),
-                          ),
+                          if (isProfessor) ...[
+                            Text(
+                              "Code : ${course['code'].toString() ?? 'N/A'}",
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withOpacity(0.6),
+                                  ),
+                            ),
+                          ],
                           const SizedBox(height: 2),
                           Text(
                             course['description'] ?? 'Aucune description',
