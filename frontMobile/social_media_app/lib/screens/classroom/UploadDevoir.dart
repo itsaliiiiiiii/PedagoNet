@@ -5,6 +5,9 @@ import 'package:social_media_app/core/Api.dart';
 import 'package:http/http.dart' as http;
 import 'dart:io';
 import 'dart:convert';
+import 'package:dio/dio.dart';
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
 
 class AssignmentSubmissionPage extends StatefulWidget {
   final Map<String, dynamic> assignment;
@@ -420,6 +423,34 @@ class _AssignmentSubmissionPageState extends State<AssignmentSubmissionPage>
     );
   }
 
+  Future<void> _downloadAndOpenPDF(String pdfUrl) async {
+    try {
+      // Obtenir le dossier temporaire
+      final directory = await getTemporaryDirectory();
+      final String filePath = '${directory.path}/temp.pdf';
+
+      // Télécharger le fichier
+      final dio = Dio();
+      await dio.download(
+        pdfUrl,
+        filePath,
+        onReceiveProgress: (received, total) {
+          if (total != -1) {
+            print(
+                'Progression: ${(received / total * 100).toStringAsFixed(0)}%');
+          }
+        },
+      );
+
+      // Ouvrir le fichier
+      final result = await OpenFile.open(filePath);
+      print('Résultat de l\'ouverture: ${result.message}');
+    } catch (e) {
+      print(
+          'Erreur lors du téléchargement ou de l\'ouverture du PDF: ${e.toString()}');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isOverdue =
@@ -602,6 +633,70 @@ class _AssignmentSubmissionPageState extends State<AssignmentSubmissionPage>
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 20),
+          if (_assignmentDetails['attachments'] != null) ...[
+            const Text(
+              'Fichier joint',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () {
+                final String pdfUrl =
+                    "${Api.baseUrl}/uploads/${_assignmentDetails['attachments'][0]['properties']['filename']}";
+                print('URL du PDF: $pdfUrl');
+                _downloadAndOpenPDF(pdfUrl);
+              },
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.grey[300]!,
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.picture_as_pdf,
+                      color: Colors.red[400],
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _assignmentDetails['attachments'][0]['properties']
+                                ['originalName']
+                            .toString(),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Icon(
+                      Icons.download,
+                      color: widget.course['color'],
+                      size: 20,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

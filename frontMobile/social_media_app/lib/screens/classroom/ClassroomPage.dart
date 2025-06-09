@@ -53,11 +53,6 @@ class _ClassroomPageState extends State<ClassroomPage>
         print('Raw API Response: $responseData');
         final List<dynamic> courseDataWithoutColor = responseData['classrooms'];
 
-        if (courseDataWithoutColor is! List) {
-          throw Exception(
-              'Expected a list of classrooms, got: ${courseDataWithoutColor.runtimeType}');
-        }
-
         final List<Map<String, dynamic>> courseData =
             courseDataWithoutColor.map((course) {
           if (course is! Map) {
@@ -151,7 +146,7 @@ class _ClassroomPageState extends State<ClassroomPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Theme.of(context).colorScheme.surface,

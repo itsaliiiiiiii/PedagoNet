@@ -8,7 +8,6 @@ const {
     getAllClassrooms,
     updateClassroom,
     deleteClassroom,
-    enrollStudent,
     unenrollStudent,
     getEnrolledStudents
 } = require('../services/classroom.service');

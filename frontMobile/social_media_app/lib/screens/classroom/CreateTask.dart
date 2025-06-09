@@ -251,7 +251,7 @@ class _CreateAssignmentPageState extends State<CreateAssignmentPage>
         _showSuccessDialog();
       } else {
         throw Exception(
-            'Erreur lors de la création du devoir: ${responseData}');
+            'Erreur lors de la création du devoir: $responseData');
       }
     } catch (e) {
       _showErrorSnackBar('Erreur lors de la création du devoir: $e');

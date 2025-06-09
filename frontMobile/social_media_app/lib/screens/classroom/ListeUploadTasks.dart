@@ -8,10 +8,10 @@ class ListeUploadTasks extends StatefulWidget {
   final String token;
 
   const ListeUploadTasks({
-    Key? key,
+    super.key,
     required this.task,
     required this.token,
-  }) : super(key: key);
+  });
 
   @override
   State<ListeUploadTasks> createState() => _ListeUploadTasksState();

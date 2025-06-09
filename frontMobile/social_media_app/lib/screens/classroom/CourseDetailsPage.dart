@@ -124,6 +124,7 @@ class _CourseDetailsPageState extends State<CourseDetailsPage> {
               'id_task': task['id_task']?.toString() ?? '',
               'title': task['title'] ?? '',
               'description': task['description'] ?? '',
+              'attachments':task['attachments'],
               'dueDate': dueDate,
               'status': 'Non commencé',
               'points': task['maxScore'] ?? 0,
