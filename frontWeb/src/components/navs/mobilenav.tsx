@@ -13,8 +13,8 @@ export default function MobileNav() {
       <NavButton 
         icon={<Home />} 
         label="Accueil" 
-        href="/home" 
-        active={pathname === '/home'} 
+        href="/feed" 
+        active={pathname === '/feed'} 
       />
       <NavButton 
         icon={<Users />} 
