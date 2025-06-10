@@ -43,6 +43,7 @@ interface Profile {
   role: string
   department?: string
   major?: string
+  profilePhotoFilename?: string
 }
 
 export default function HomePage() {
@@ -211,7 +212,6 @@ export default function HomePage() {
 
       // Transform API posts to match PostData interface
       const newPosts = data.posts.map((apiPost: any) => {
-        console.log("API Post:", apiPost)
         return {
           id: apiPost.id,
           author: {
@@ -314,8 +314,26 @@ export default function HomePage() {
               <div className="h-14 bg-gradient-to-r from-blue-400 to-blue-500 dark:from-blue-600 dark:to-blue-700"></div>
               {/* Profile Info */}
               <div className="px-4 pt-4 pb-2 text-center border-b border-gray-200 dark:border-gray-700">
-                <div className="h-16 w-16 mx-auto -mt-12 rounded-full border-2 border-white dark:border-gray-800 bg-blue-100 dark:bg-gray-700 flex items-center justify-center shadow-sm">
-                  <User className="h-8 w-8 text-blue-600 dark:text-gray-300" />
+                <div className="h-16 w-16 mx-auto -mt-12 rounded-full border-2 border-white dark:border-gray-800 bg-blue-100 dark:bg-gray-700 flex items-center justify-center shadow-sm overflow-hidden">
+                  {profile?.profilePhotoFilename ? (
+                    <img 
+                      src={`http://localhost:8080/upload/${profile.profilePhotoFilename}`} 
+                      alt={`${profile.firstName} ${profile.lastName}`}
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        // Fallback to User icon if image fails to load
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.parentElement?.classList.add('flex');
+                        e.currentTarget.parentElement?.classList.add('items-center');
+                        e.currentTarget.parentElement?.classList.add('justify-center');
+                        const icon = document.createElement('div');
+                        icon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-8 w-8 text-blue-600 dark:text-gray-300"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
+                        e.currentTarget.parentElement?.appendChild(icon.firstChild as Node);
+                      }}
+                    />
+                  ) : (
+                    <User className="h-8 w-8 text-blue-600 dark:text-gray-300" />
+                  )}
                 </div>
                 {loading ? (
                   <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading profile...</div>
