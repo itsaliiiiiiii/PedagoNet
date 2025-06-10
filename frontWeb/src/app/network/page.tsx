@@ -315,7 +315,7 @@ export default function MyConnectionsPage() {
                         {/* Avatar */}
                         <div className="relative">
                           <img
-                            src={connection.profilePhoto ? `/uploads/${connection.profilePhoto}` : "/placeholder.svg"}
+                            src={connection.profilePhoto ? `http://localhost:8080/upload/${connection.profilePhoto}` : "/placeholder.svg"}
                             alt={`${connection.firstName} ${connection.lastName}`}
                             className="h-12 w-12 rounded-full object-cover"
                             onClick={() =>

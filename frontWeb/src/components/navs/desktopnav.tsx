@@ -47,7 +47,13 @@ export default function DesktopNav() {
 
           {/* Navigation - Hidden on mobile */}
           <nav className="hidden md:flex items-center ml-6 gap-1 sm:gap-2">
-            <NavButton icon={<Home />} label="Accueil" href="/home" active={pathname === "/home"} />
+            {/* <NavButton icon={<Home />} label="Accueil" href="/home" active={pathname === "/home"} /> */}
+            <NavButton 
+              icon={<Home />} 
+              label="Accueil" 
+              href="/feed" 
+              active={pathname === '/feed'} 
+            />
             <NavButton
               icon={<Users />}
               label="Réseau"

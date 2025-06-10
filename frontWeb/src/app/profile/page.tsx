@@ -237,6 +237,7 @@ export default function MyProfilePage() {
   const [userConnections, setUserConnections] = useState<ConnectionData[]>([])
   const [isLoadingConnections, setIsLoadingConnections] = useState(false)
   const [connectionsError, setConnectionsError] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState<string>("") // New state for search term
 
   const postsObserver = useRef<IntersectionObserver | null>(null) // For infinite scroll for posts
 
@@ -409,7 +410,7 @@ export default function MyProfilePage() {
 
           // Map backend connections to ConnectionData interface
           const mappedConnections: ConnectionData[] = data.connections.map((conn: any) => ({
-            id: conn.id_user, // Assuming id_user is the unique identifier
+            id: conn.userId,
             name: `${conn.firstName} ${conn.lastName}`,
             role: conn.role,
             profilePhoto: conn.profilePhoto, // Assuming this field exists
@@ -471,6 +472,11 @@ export default function MyProfilePage() {
       setUploadingPhoto(false)
     }
   }
+
+  // Filter connections based on search term
+  const filteredConnections = userConnections.filter((connection) =>
+    connection.name.toLowerCase().includes(searchTerm.toLowerCase()),
+  )
 
   if (loading) return <div>Chargement...</div>
 
@@ -831,11 +837,13 @@ export default function MyProfilePage() {
           {activeTab === "friends" && (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Amis ({userConnections.length})</h2>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Amis ({filteredConnections.length})</h2>
                 <div className="relative">
                   <input
                     type="text"
                     placeholder="Rechercher un ami..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-8 pr-4 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -854,17 +862,21 @@ export default function MyProfilePage() {
                       <p>{connectionsError}</p>
                     </div>
                   </div>
-                ) : userConnections.length === 0 ? (
+                ) : filteredConnections.length === 0 && searchTerm === "" ? (
                   <div className="text-center py-8 text-gray-500 dark:text-gray-400 col-span-full">
                     Aucun ami à afficher
                   </div>
+                ) : filteredConnections.length === 0 && searchTerm !== "" ? (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400 col-span-full">
+                    Aucun ami trouvé pour "{searchTerm}"
+                  </div>
                 ) : (
-                  userConnections.map((friend) => (
+                  filteredConnections.map((friend) => (
                     <div
-                      className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
+                      key={friend.id} // Add key prop using friend.id
+                      className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
                     >
                       <div className="h-12 w-12 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-                        
                         <Image
                           alt={friend.name}
                           className="h-full w-full object-cover"
