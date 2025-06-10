@@ -28,6 +28,7 @@ export default function LoginForm() {
     e.preventDefault()
     setError("")
     setIsLoading(true)
+    setRole(null)
 
     try {
       const response = await fetch("http://localhost:8080/auth/login", {

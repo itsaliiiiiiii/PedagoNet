@@ -6,7 +6,8 @@ import { BookOpen, Users, FileText, Download, ArrowLeft, Plus, Calendar, Upload,
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import DesktopNav from "@/components/navs/desktopnav"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
+import { useRole } from "../../context/RoleContext"
 
 const classroomData = {
   id: 1,
@@ -49,6 +50,41 @@ const classroomData = {
     },
   ],
 }
+
+// Données d'exemple pour les soumissions
+const submissionsData = [
+  {
+    id: 1,
+    studentName: "Alice Dupont",
+    submissionDate: "2024-01-18T14:30:00",
+    status: "graded",
+    score: 18,
+    maxScore: 20,
+    feedback: "Excellent travail, très bonne compréhension des concepts.",
+    file: "devoir3_alice.pdf",
+  },
+  {
+    id: 2,
+    studentName: "Thomas Martin",
+    submissionDate: "2024-01-19T09:15:00",
+    status: "graded",
+    score: 15,
+    maxScore: 20,
+    feedback: "Bon travail, quelques erreurs mineures.",
+    file: "devoir3_thomas.pdf",
+  },
+  {
+    id: 3,
+    studentName: "Sophie Bernard",
+    submissionDate: "2024-01-19T23:45:00",
+    status: "submitted",
+    score: null,
+    maxScore: 20,
+    feedback: "",
+    file: "devoir3_sophie.pdf",
+  },
+]
+
 function formatDeadline(deadlineObj: any) {
   if (!deadlineObj) return "Date inconnue"
 
@@ -75,6 +111,9 @@ function formatDeadline(deadlineObj: any) {
 export default function ClassroomDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const [activeTab, setActiveTab] = useState("assignments")
   const [isAddingTask, setIsAddingTask] = useState(false)
+  const [viewingTaskDetails, setViewingTaskDetails] = useState<{ id: number; title: string } | null>(null)
+  const [isSubmittingTask, setIsSubmittingTask] = useState(false)
+  const role = useRole()
   const [taskForm, setTaskForm] = useState({
     name: "",
     description: "",
@@ -82,7 +121,12 @@ export default function ClassroomDetailPage({ params }: { params: Promise<{ id: 
     points: "10",
     file: null as File | null,
   })
+  const [submissionForm, setSubmissionForm] = useState({
+    comment: "",
+    file: null as File | null,
+  })
 
+  const router = useRouter()
   params = useParams()
   const classroomId = params.id
 
@@ -90,96 +134,152 @@ export default function ClassroomDetailPage({ params }: { params: Promise<{ id: 
 
   useEffect(() => {
     async function getTasks() {
-      const response = await fetch(`http://localhost:8080/tasks/${classroomId}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-      })
+      try {
+        const response = await fetch(`http://localhost:8080/tasks/${classroomId}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+        })
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch posts")
-      }
-
-      const data = await response.json()
-
-      console.log(data.data)
-
-      if (!data.success) {
-        throw new Error(data.message || "Failed to fetch posts")
-      }
-
-      const mapped = data.data.map((task: any) => {
-        // const isProfessor = classe.author.role === "professor";
-        const isProfessor = true
-        // const isStudent = classe.author.role === "student";
-        const isStudent = false
-
-        return {
-          id: task.id_task,
-          description: task.descitpion,
-          maxscore: task.maxScore,
-          title: task.title,
-          deadline: task.deadline,
-          avatarBg: isProfessor
-            ? "bg-purple-100 dark:bg-purple-900/30"
-            : isStudent
-              ? "bg-blue-100 dark:bg-blue-900/30"
-              : "bg-gray-100 dark:bg-gray-700",
+        if (!response.ok) {
+          throw new Error("Failed to fetch tasks")
         }
-      })
-      setTasksData(mapped)
+
+        const data = await response.json()
+
+        console.log(data.data);
+
+        if (!data.success) {
+          throw new Error(data.message || "Failed to fetch tasks")
+        }
+
+        const mapped = data.data.map((task: any) => {
+          return {
+            id: task.id_task,
+            description: task.descitpion,
+            maxscore: task.maxScore,
+            title: task.title,
+            deadline: task.deadline,
+            attachments:task.attachments[0]
+          }
+        })
+        setTasksData(mapped)
+      } catch (error) {
+        console.error("Error fetching tasks:", error)
+        // Utiliser les données d'exemple en cas d'erreur
+        setTasksData(classroomData.assignments)
+      }
     }
 
     getTasks()
-  }, [])
+  }, [classroomId])
 
   const handleTaskFormChange = (field: string, value: string | File | null) => {
     setTaskForm((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSubmissionFormChange = (field: string, value: string | File | null) => {
+    setSubmissionForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, formType: "task" | "submission") => {
     const file = e.target.files?.[0] || null
-    handleTaskFormChange("file", file)
+    if (formType === "task") {
+      handleTaskFormChange("file", file)
+    } else {
+      handleSubmissionFormChange("file", file)
+    }
   }
 
   const handleSubmitTask = async (e: React.FormEvent) => {
     e.preventDefault()
 
     const formData = new FormData()
-    formData.append("name", taskForm.name)
+    formData.append("title", taskForm.name)
     formData.append("description", taskForm.description)
     formData.append("deadline", taskForm.deadline)
-    formData.append("points", taskForm.points)
-    // formData.append("classroomId", classroomData.id.toString())
+    formData.append("maxScore", taskForm.points)
+
     if (taskForm.file) {
-      formData.append("file", taskForm.file)
+      formData.append("attachments", taskForm.file)
     }
 
     try {
-      const response = await fetch("http://localhost:8080/tasks", {
+      const response = await fetch(`http://localhost:8080/tasks/${classroomId}`, {
         method: "POST",
         body: formData,
         credentials: "include",
       })
 
       if (response.ok) {
+        const data = await response.json()
+        // Add the new task to the tasks list
+        if (data.success) {
+          console.log("success");
+          // const newTask = {
+          //   id: data.task.id_task,
+          //   title: data.task.title,
+          //   description: data.task.description,
+          //   deadline: data.task.deadline,
+          //   maxscore: data.task.maxScore,
+          // }
+          // setTasksData([...tasksData, newTask])
+        }
+
         // Reset form and return to tasks view
         setTaskForm({ name: "", description: "", deadline: "", points: "10", file: null })
         setIsAddingTask(false)
-        setActiveTab("assignments") // S'assurer qu'on revient sur l'onglet des devoirs
-        // Refresh tasks list here if needed
+        setActiveTab("assignments")
+      } else {
+        console.error("Error creating task:", await response.text())
+        alert("Erreur lors de la création de la tâche")
       }
     } catch (error) {
       console.error("Error creating task:", error)
+      alert("Erreur lors de la création de la tâche")
     }
   }
+
+  const handleSubmitSubmission = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!viewingTaskDetails) return
+
+    const formData = new FormData()
+    formData.append("taskId", viewingTaskDetails.id.toString())
+    formData.append("comment", submissionForm.comment)
+    if (submissionForm.file) {
+      formData.append("file", submissionForm.file)
+    }
+
+    try {
+      // Simuler l'envoi de la soumission
+      console.log("Submitting:", formData)
+
+      // Reset form and return to tasks view
+      setSubmissionForm({ comment: "", file: null })
+      setViewingTaskDetails(null)
+      setIsSubmittingTask(false)
+
+      // Afficher un message de succès
+      alert("Soumission envoyée avec succès!")
+    } catch (error) {
+      console.error("Error submitting task:", error)
+    }
+  }
+
+  const handleViewTaskDetails = (task: any) => {
+    setViewingTaskDetails({ id: task.id, title: task.title })
+    if (role === "student") {
+      setIsSubmittingTask(true)
+    }
+  }
+
   const classroom = classroomData
 
   const tabs = [{ id: "assignments", label: "Devoirs", icon: FileText }]
-
-  // console.log(formatDeadline(tasksData[0].deadline));
 
   // Fonction pour déterminer le statut basé sur la deadline
   const getTaskStatus = (deadline: any) => {
@@ -210,6 +310,18 @@ export default function ClassroomDetailPage({ params }: { params: Promise<{ id: 
     }
   }
 
+  // Fonction pour formater la date de soumission
+  const formatSubmissionDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleString("fr-FR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Navigation principale */}
@@ -218,13 +330,15 @@ export default function ClassroomDetailPage({ params }: { params: Promise<{ id: 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <Link
-            href="/classroom"
-            className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4 transition-colors duration-200"
-          >
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Retour aux classrooms
-          </Link>
+          <div className="flex justify-between items-center mb-4">
+            <Link
+              href="/classroom"
+              className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
+            >
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Retour aux classrooms
+            </Link>
+          </div>
 
           <div className="flex items-start gap-4">
             <div className={`w-16 h-16 rounded-lg ${classroom.color} flex items-center justify-center`}>
@@ -276,20 +390,23 @@ export default function ClassroomDetailPage({ params }: { params: Promise<{ id: 
 
         {/* Tab Content */}
         <div className="space-y-6">
-          {!isAddingTask ? (
+          {/* Vue principale des devoirs */}
+          {!isAddingTask && !viewingTaskDetails && (
             <>
               {/* Assignments Tab */}
               {activeTab === "assignments" && (
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Devoirs</h2>
-                    <button
-                      onClick={() => setIsAddingTask(true)}
-                      className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors duration-200"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Ajouter une tâche
-                    </button>
+                    {role === "professor" && (
+                      <button
+                        onClick={() => setIsAddingTask(true)}
+                        className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors duration-200"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Ajouter une tâche
+                      </button>
+                    )}
                   </div>
                   {tasksData.map((assignment) => (
                     <div
@@ -327,7 +444,10 @@ export default function ClassroomDetailPage({ params }: { params: Promise<{ id: 
                       </div>
                       <div className="px-6 pb-6">
                         <div className="flex gap-2">
-                          <button className="inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors duration-200">
+                          <button
+                            onClick={() => handleViewTaskDetails(assignment)}
+                            className="inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors duration-200"
+                          >
                             Voir les détails
                           </button>
                           <button className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-md transition-colors duration-200">
@@ -341,8 +461,10 @@ export default function ClassroomDetailPage({ params }: { params: Promise<{ id: 
                 </div>
               )}
             </>
-          ) : (
-            /* Formulaire d'ajout de tâche */
+          )}
+
+          {/* Vue d'ajout de tâche (professeur uniquement) */}
+          {isAddingTask && (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
               <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Ajouter une nouvelle tâche</h2>
@@ -434,7 +556,7 @@ export default function ClassroomDetailPage({ params }: { params: Promise<{ id: 
                     <input
                       type="file"
                       id="taskFile"
-                      onChange={handleFileChange}
+                      onChange={(e) => handleFileChange(e, "task")}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white file:mr-4 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                     />
                     <Upload className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 pointer-events-none" />
@@ -462,6 +584,216 @@ export default function ClassroomDetailPage({ params }: { params: Promise<{ id: 
                     className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors duration-200"
                   >
                     Confirmer
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Vue de détail de tâche pour professeur (liste des soumissions) */}
+          {viewingTaskDetails && role === "professor" && (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                    Soumissions pour: {viewingTaskDetails.title}
+                  </h2>
+                  <button
+                    onClick={() => setViewingTaskDetails(null)}
+                    className="inline-flex items-center px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-1" />
+                    Retour
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6">
+                {submissionsData.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                      <thead className="bg-gray-50 dark:bg-gray-800">
+                        <tr>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                          >
+                            Étudiant
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                          >
+                            Date de soumission
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                          >
+                            Statut
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                          >
+                            Note
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                          >
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        {submissionsData.map((submission) => (
+                          <tr key={submission.id}>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                {submission.studentName}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-500 dark:text-gray-400">
+                                {formatSubmissionDate(submission.submissionDate)}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span
+                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  submission.status === "graded"
+                                    ? "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"
+                                    : "bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200"
+                                }`}
+                              >
+                                {submission.status === "graded" ? "Noté" : "Soumis"}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {submission.score !== null ? (
+                                <div className="text-sm text-gray-900 dark:text-white">
+                                  {submission.score}/{submission.maxScore}
+                                </div>
+                              ) : (
+                                <div className="text-sm text-gray-500 dark:text-gray-400">Non noté</div>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <div className="flex space-x-2">
+                                <button className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300">
+                                  Voir
+                                </button>
+                                {submission.status !== "graded" && (
+                                  <button className="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300">
+                                    Noter
+                                  </button>
+                                )}
+                                <button className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300">
+                                  <Download className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 mb-4">
+                      <FileText className="h-8 w-8 text-gray-500 dark:text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Aucune soumission</h3>
+                    <p className="text-gray-500 dark:text-gray-400">
+                      Aucun étudiant n'a encore soumis de travail pour ce devoir.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Vue de soumission de devoir pour étudiant */}
+          {viewingTaskDetails && role === "student" && (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                    Soumettre: {viewingTaskDetails.title}
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setViewingTaskDetails(null)
+                      setIsSubmittingTask(false)
+                    }}
+                    className="inline-flex items-center px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-1" />
+                    Retour
+                  </button>
+                </div>
+              </div>
+
+              <form onSubmit={handleSubmitSubmission} className="p-6 space-y-6">
+                <div>
+                  <label
+                    htmlFor="submissionComment"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  >
+                    Commentaire (optionnel)
+                  </label>
+                  <textarea
+                    id="submissionComment"
+                    value={submissionForm.comment}
+                    onChange={(e) => handleSubmissionFormChange("comment", e.target.value)}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="Ajoutez un commentaire à votre soumission..."
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="submissionFile"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  >
+                    Fichier de soumission
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      id="submissionFile"
+                      onChange={(e) => handleFileChange(e, "submission")}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white file:mr-4 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      required
+                    />
+                    <Upload className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 pointer-events-none" />
+                  </div>
+                  {submissionForm.file && (
+                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                      Fichier sélectionné: {submissionForm.file.name}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex gap-4 pt-6 border-t border-gray-200 dark:border-gray-700">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setViewingTaskDetails(null)
+                      setIsSubmittingTask(false)
+                      setSubmissionForm({ comment: "", file: null })
+                    }}
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors duration-200"
+                  >
+                    Soumettre
                   </button>
                 </div>
               </form>
