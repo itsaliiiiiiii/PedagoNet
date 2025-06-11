@@ -56,13 +56,13 @@ export function RoleDebug() {
     console.log("%c[role-debug] role =", "color: green", role)
   }, [role])
 
-  return (
-    <button
-      className="fixed top-4 right-4 z-50 inline-flex items-center px-3 py-1 text-xs bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full"
-    >
-      Mode: {role === "professor" ? "Professeur" : role === "student" ? "Étudiant" : "Non connecté"}
-    </button>
-  )
+  // return (
+  //   <button
+  //     className="fixed top-4 right-4 z-50 inline-flex items-center px-3 py-1 text-xs bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full"
+  //   >
+  //     Mode: {role === "professor" ? "Professeur" : role === "student" ? "Étudiant" : "Non connecté"}
+  //   </button>
+  // )
 }
 
 export default RoleContext
