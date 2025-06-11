@@ -9,47 +9,47 @@ import DesktopNav from "@/components/navs/desktopnav"
 import { useParams, useRouter } from "next/navigation"
 import { useRole } from "../../context/RoleContext"
 
-const classroomData = {
-  id: 1,
-  name: "Mathématiques Avancées",
-  code: "MATH301",
-  teacher: "Prof. Martin Dubois",
-  students: 28,
-  description: "Cours de mathématiques niveau avancé couvrant l'algèbre linéaire et le calcul différentiel.",
-  color: "bg-blue-500",
-  assignments: [
-    {
-      id: 1,
-      title: "Devoir 3 - Systèmes linéaires",
-      dueDate: "2024-01-20",
-      status: "pending",
-      points: 20,
-    },
-    {
-      id: 2,
-      title: "Projet final - Application des matrices",
-      dueDate: "2024-02-15",
-      status: "assigned",
-      points: 50,
-    },
-  ],
-  resources: [
-    {
-      id: 1,
-      name: "Chapitre 4 - Algèbre linéaire.pdf",
-      type: "pdf",
-      size: "2.3 MB",
-      uploadDate: "2024-01-05",
-    },
-    {
-      id: 2,
-      name: "Exercices corrigés.pdf",
-      type: "pdf",
-      size: "1.8 MB",
-      uploadDate: "2024-01-03",
-    },
-  ],
-}
+// const classroomData = {
+//   id: 1,
+//   name: "Mathématiques Avancées",
+//   code: "MATH301",
+//   teacher: "Prof. Martin Dubois",
+//   students: 28,
+//   description: "Cours de mathématiques niveau avancé couvrant l'algèbre linéaire et le calcul différentiel.",
+//   color: "bg-blue-500",
+//   assignments: [
+//     {
+//       id: 1,
+//       title: "Devoir 3 - Systèmes linéaires",
+//       dueDate: "2024-01-20",
+//       status: "pending",
+//       points: 20,
+//     },
+//     {
+//       id: 2,
+//       title: "Projet final - Application des matrices",
+//       dueDate: "2024-02-15",
+//       status: "assigned",
+//       points: 50,
+//     },
+//   ],
+//   resources: [
+//     {
+//       id: 1,
+//       name: "Chapitre 4 - Algèbre linéaire.pdf",
+//       type: "pdf",
+//       size: "2.3 MB",
+//       uploadDate: "2024-01-05",
+//     },
+//     {
+//       id: 2,
+//       name: "Exercices corrigés.pdf",
+//       type: "pdf",
+//       size: "1.8 MB",
+//       uploadDate: "2024-01-03",
+//     },
+//   ],
+// }
 
 // Données d'exemple pour les soumissions
 const submissionsData = [
@@ -131,8 +131,34 @@ export default function ClassroomDetailPage({ params }: { params: Promise<{ id: 
   const classroomId = params.id
 
   const [tasksData, setTasksData] = useState([])
+  const [classroomData,setClassroomData]=useState({})
+
 
   useEffect(() => {
+    async function getClassroomData(){
+      const response = await fetch(`http://localhost:8080/classrooms/${classroomId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      })
+      if (!response.ok) {
+        throw new Error("Failed to fetch tasks")
+      }
+
+      const data = await response.json()
+
+
+      if (!data.success) {
+        throw new Error(data.message || "Failed to fetch tasks")
+      }
+      console.log(data.classroom)
+
+      data.classroom.color = localStorage.getItem('color')
+
+      setClassroomData(data.classroom)
+    }
     async function getTasks() {
       try {
         const response = await fetch(`http://localhost:8080/tasks/${classroomId}`, {
@@ -149,7 +175,7 @@ export default function ClassroomDetailPage({ params }: { params: Promise<{ id: 
 
         const data = await response.json()
 
-        console.log(data.data);
+        // console.log(data.data);
 
         if (!data.success) {
           throw new Error(data.message || "Failed to fetch tasks")
@@ -172,7 +198,8 @@ export default function ClassroomDetailPage({ params }: { params: Promise<{ id: 
         setTasksData(classroomData.assignments)
       }
     }
-
+    
+    getClassroomData()
     getTasks()
   }, [classroomId])
 
@@ -351,14 +378,9 @@ export default function ClassroomDetailPage({ params }: { params: Promise<{ id: 
                   {classroom.code}
                 </span>
               </div>
-              <p className="text-gray-600 dark:text-gray-400 mb-2">{classroom.teacher}</p>
+              {/* <p className="text-gray-600 dark:text-gray-400 mb-2">{classroom.teacher}</p> */}
               <p className="text-sm text-gray-500 dark:text-gray-400">{classroom.description}</p>
-              <div className="flex items-center gap-4 mt-3 text-sm text-gray-500 dark:text-gray-400">
-                <div className="flex items-center">
-                  <Users className="h-4 w-4 mr-1" />
-                  <span>{classroom.students} étudiants</span>
-                </div>
-              </div>
+              
             </div>
           </div>
         </div>

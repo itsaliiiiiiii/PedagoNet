@@ -1,12 +1,21 @@
 "use client"
 
-import type React from "react"
+import React from "react"
 import { BookOpen, User, Plus, Search, X } from "lucide-react"
 import Link from "next/link"
-import DesktopNav from "@/components/navs/desktopnav"
+import DesktopNav from "../../components/navs/desktopnav"
 import { useEffect, useState } from "react"
 import { useRole } from "../context/RoleContext"
 
+interface Classroom {
+  id: string;
+  avatar: React.ReactNode;
+  avatarBg: string;
+  name: string;
+  color: string;
+  code: string;
+  description: string;
+}
 
 // Données d'exemple - à remplacer par des données réelles depuis votre API
 
@@ -139,7 +148,7 @@ export default function ClassroomPage() {
 
   const role = useRole()
 
-  const [classrooms, setClassrooms] = useState([])
+  const [classrooms, setClassrooms] = useState<Classroom[]>([])
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false)
   const [courseCode, setCourseCode] = useState("")
   const [userRole, setUserRole] = useState(role) // Changer en "professor" pour tester
@@ -183,6 +192,8 @@ export default function ClassroomPage() {
       // const isStudent = classe.author.role === "student";
       const isStudent = false
 
+      // localStorage.setItem('classroomData',mapped)
+
       return {
         id: classe.id_classroom,
         avatar: <User className="h-6 w-6 text-purple-600 dark:text-purple-400" />,
@@ -192,21 +203,9 @@ export default function ClassroomPage() {
             ? "bg-blue-100 dark:bg-blue-900/30"
             : "bg-gray-100 dark:bg-gray-700",
         name: `${classe.name}`,
-        color: getColorFromId(classe.id_classroom), // ✅ couleur déterministe
-
-        //   title: isProfessor
-        //     ? `Professeur de ${apiPost.author.department || "non spécifié"}`
-        //     : isStudent
-        //       ? `Étudiant en ${apiPost.author.major || "non spécifié"}`
-        //       : "Membre",
-        //   time: formatTimeAgo(apiPost.createdAt),
-        //   content: apiPost.content,
-        //   likes: apiPost.likes || 0,
+        color: getColorFromId(classe.id_classroom), // ✅
+        code:`${classe.code}`,
         description: `${classe.description}`,
-        //   comments: apiPost.comments || 0,
-        //   image: apiPost.imageUrl || undefined,
-        //   imageAlt: apiPost.imageAlt || undefined,
-        //   isLiked: apiPost.isLiked || false
       }
     })
     setClassrooms(mapped)
@@ -215,6 +214,10 @@ export default function ClassroomPage() {
   useEffect(() => {
     fetchClassrooms()
   }, [])
+
+  function saveClassroomData(classroom) {
+    localStorage.setItem('color', classroom.color)
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -303,6 +306,7 @@ export default function ClassroomPage() {
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">{classroom.description}</p>
                 <div className="flex gap-2">
                   <Link
+                    onClick={() => saveClassroomData(classroom)}
                     href={`/classroom/${classroom.id}`}
                     className="flex-1 inline-flex items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors duration-200"
                   >
