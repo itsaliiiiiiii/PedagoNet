@@ -4,6 +4,7 @@ import type React from "react"
 import { BookOpen, User, Plus, Search, X } from "lucide-react"
 import Link from "next/link"
 import DesktopNav from "@/components/navs/desktopnav"
+import MobileNav from "@/components/navs/mobilenav"
 import { useEffect, useState } from "react"
 import { useRole } from "../context/RoleContext"
 
@@ -192,21 +193,8 @@ export default function ClassroomPage() {
             ? "bg-blue-100 dark:bg-blue-900/30"
             : "bg-gray-100 dark:bg-gray-700",
         name: `${classe.name}`,
-        color: getColorFromId(classe.id_classroom), // ✅ couleur déterministe
-
-        //   title: isProfessor
-        //     ? `Professeur de ${apiPost.author.department || "non spécifié"}`
-        //     : isStudent
-        //       ? `Étudiant en ${apiPost.author.major || "non spécifié"}`
-        //       : "Membre",
-        //   time: formatTimeAgo(apiPost.createdAt),
-        //   content: apiPost.content,
-        //   likes: apiPost.likes || 0,
+        color: getColorFromId(classe.id_classroom),
         description: `${classe.description}`,
-        //   comments: apiPost.comments || 0,
-        //   image: apiPost.imageUrl || undefined,
-        //   imageAlt: apiPost.imageAlt || undefined,
-        //   isLiked: apiPost.isLiked || false
       }
     })
     setClassrooms(mapped)
@@ -220,6 +208,9 @@ export default function ClassroomPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Navigation principale */}
       <DesktopNav />
+      <MobileNav />
+
+      {/* Contenu principal */}
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}

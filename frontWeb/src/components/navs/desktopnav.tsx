@@ -30,7 +30,7 @@ export default function DesktopNav() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
           <div className="flex items-center gap-3 flex-1">
-            <Link href="/home" className="flex items-center gap-2">
+            <Link href ="feed" className="flex items-center gap-2">
               <Logo />
               <span className="hidden sm:inline text-sm font-bold text-slate-600 dark:text-white">ENSAConnect</span>
             </Link>

@@ -6,6 +6,7 @@ import { BookOpen, Users, FileText, Download, ArrowLeft, Plus, Calendar, Upload,
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import DesktopNav from "@/components/navs/desktopnav"
+import MobileNav from "@/components/navs/mobilenav"
 import { useParams, useRouter } from "next/navigation"
 import { useRole } from "../../context/RoleContext"
 
@@ -326,7 +327,7 @@ export default function ClassroomDetailPage({ params }: { params: Promise<{ id: 
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Navigation principale */}
       <DesktopNav />
-
+      <MobileNav />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
