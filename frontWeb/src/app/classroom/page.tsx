@@ -3,7 +3,8 @@
 import React from "react"
 import { BookOpen, User, Plus, Search, X } from "lucide-react"
 import Link from "next/link"
-import DesktopNav from "../../components/navs/desktopnav"
+import DesktopNav from "@/components/navs/desktopnav"
+import MobileNav from "@/components/navs/mobilenav"
 import { useEffect, useState } from "react"
 import { useRole } from "../context/RoleContext"
 
@@ -203,8 +204,9 @@ export default function ClassroomPage() {
             ? "bg-blue-100 dark:bg-blue-900/30"
             : "bg-gray-100 dark:bg-gray-700",
         name: `${classe.name}`,
-        color: getColorFromId(classe.id_classroom), // ✅
+        color: getColorFromId(classe.id_classroom),
         code:`${classe.code}`,
+
         description: `${classe.description}`,
       }
     })
@@ -223,6 +225,9 @@ export default function ClassroomPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Navigation principale */}
       <DesktopNav />
+      <MobileNav />
+
+      {/* Contenu principal */}
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
