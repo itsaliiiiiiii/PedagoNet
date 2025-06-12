@@ -14,7 +14,7 @@ class MessagesPage extends StatefulWidget {
 
 class _MessagesPageState extends State<MessagesPage> {
   final TextEditingController _searchController = TextEditingController();
-  bool _isSearchFocused = false;
+  final bool _isSearchFocused = false;
   String _filterValue = 'Tous';
 
   final List<Map<String, dynamic>> conversations = [
@@ -114,8 +114,8 @@ class _MessagesPageState extends State<MessagesPage> {
       floatingActionButton: FloatingActionButton(
         onPressed: () {},
         backgroundColor: Colors.blue[600],
-        child: const Icon(Icons.edit, color: Colors.white),
         tooltip: 'Nouveau message',
+        child: const Icon(Icons.edit, color: Colors.white),
       ),
     );
   }

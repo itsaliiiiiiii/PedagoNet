@@ -1,134 +1,316 @@
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:social_media_app/core/Api.dart';
 import 'package:social_media_app/screens/FriendPage.dart';
 import 'package:social_media_app/widgets/homePage/Post/Post.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:http_parser/http_parser.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  final String token;
+
+  const ProfilePage({super.key, required this.token});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  final List<Map<String, dynamic>> posts = [
-    {
-      'name': 'Anas Zerhoun',
-      'role': 'Étudiant GI2',
-      'time': '1h',
-      'description':
-          'Voici mon premier post sur l\'app académique ! Voici mon premier post sur l\'app académique ! Voici mon premier post sur l\'app académique !Voici mon premier post sur l\'app académique !',
-      'imageUrl':
-          'https://media.licdn.com/dms/image/v2/D4D22AQGStRRs6la14g/feedshare-shrink_800/B4DZYXfK8nG4Ag-/0/1744150772065?e=1747267200&v=beta&t=EoR1gz6Usd0RayI-AzPJ93aaxIGoPjYg7RYt0RZMDM0',
-      'likes': 12,
-      'isLiked': false,
-    },
-    {
-      'name': 'Sarah B.',
-      'role': 'Étudiante GI2',
-      'time': '2h',
-      'description': 'Un post sans imageeeeeeeeeeeeeeee.',
-      'likes': 8,
-      'isLiked': false,
-    },
-    {
-      'name': 'Sarah B.',
-      'role': 'Étudiante GI2',
-      'time': '2h',
-      'description': 'Nouveau projet en Flutter terminé !',
-      'imageUrl':
-          'https://media.licdn.com/dms/image/v2/D5622AQHC6U0LmDdu3g/feedshare-shrink_800/B56ZYqUWeIH0Ak-/0/1744466701049?e=1747267200&v=beta&t=5cVOs_2GPFYZUb42Gl46DPyji4j9gGyxlY660DAEttY',
-      'likes': 15,
-      'isLiked': true,
-    },
-    {
-      'name': 'Anas Zerhoun',
-      'role': 'Étudiant GI2',
-      'time': '1h',
-      'description': 'Voici mon premier post sur l\'app académique !',
-      'imageUrl':
-          'https://media.licdn.com/dms/image/v2/D4D22AQGStRRs6la14g/feedshare-shrink_800/B4DZYXfK8nG4Ag-/0/1744150772065?e=1747267200&v=beta&t=EoR1gz6Usd0RayI-AzPJ93aaxIGoPjYg7RYt0RZMDM0',
-      'likes': 20,
-      'isLiked': false,
-    },
-    {
-      'name': 'Sarah B.',
-      'role': 'Étudiante GI2',
-      'time': '2h',
-      'description': 'Nouveau projet en Flutter terminé !',
-      'imageUrl':
-          'https://media.licdn.com/dms/image/v2/D5622AQHC6U0LmDdu3g/feedshare-shrink_800/B56ZYqUWeIH0Ak-/0/1744466701049?e=1747267200&v=beta&t=5cVOs_2GPFYZUb42Gl46DPyji4j9gGyxlY660DAEttY',
-      'likes': 9,
-      'isLiked': false,
-    },
-    {
-      'name': 'Sarah B.',
-      'role': 'Étudiante GI2',
-      'time': '2h',
-      'imageUrl':
-          'https://media.licdn.com/dms/image/v2/D5622AQHC6U0LmDdu3g/feedshare-shrink_800/B56ZYqUWeIH0Ak-/0/1744466701049?e=1747267200&v=beta&t=5cVOs_2GPFYZUb42Gl46DPyji4j9gGyxlY660DAEttY',
-      'likes': 6,
-      'isLiked': false,
-    },
-    {
-      'name': 'Anas Zerhoun',
-      'role': 'Étudiant GI2',
-      'time': '1h',
-      'description': 'Voici mon premier post sur l\'app académique !',
-      'imageUrl':
-          'https://media.licdn.com/dms/image/v2/D4D22AQGStRRs6la14g/feedshare-shrink_800/B4DZYXfK8nG4Ag-/0/1744150772065?e=1747267200&v=beta&t=EoR1gz6Usd0RayI-AzPJ93aaxIGoPjYg7RYt0RZMDM0',
-      'likes': 13,
-      'isLiked': false,
-    },
-  ];
-
+  // Variables pour les données du profil
+  Map<String, dynamic>? profile;
+  List<dynamic>? posts;
   bool isFollowing = false;
+
+  // Variables pour la gestion des images
+  File? _selectedProfileImage;
+  final ImagePicker _picker = ImagePicker();
+  bool _isUploadingProfile = false;
+
+  @override
+  void initState() {
+    super.initState();
+    loadProfile();
+  }
+
+  // Méthode pour sélectionner une image depuis la galerie ou la caméra
+  Future<void> _pickImage({bool fromCamera = false}) async {
+    final XFile? pickedFile = await _picker.pickImage(
+      source: fromCamera ? ImageSource.camera : ImageSource.gallery,
+      imageQuality: 100,
+    );
+
+    if (pickedFile != null) {
+      _cropImage(pickedFile.path);
+    }
+  }
+
+  // Méthode pour afficher un dialogue de choix de source d'image
+  void _showImageSourceDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Photo de profil'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                GestureDetector(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Row(
+                      children: [
+                        Icon(Icons.photo_library, color: Colors.blue[600]),
+                        SizedBox(width: 10),
+                        Text('Choisir depuis la galerie'),
+                      ],
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _pickImage(fromCamera: false);
+                  },
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: Divider(),
+                ),
+                GestureDetector(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Row(
+                      children: [
+                        Icon(Icons.camera_alt, color: Colors.blue[600]),
+                        SizedBox(width: 10),
+                        Text('Prendre une photo'),
+                      ],
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _pickImage(fromCamera: true);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Méthode pour recadrer l'image
+  Future<void> _cropImage(String imagePath) async {
+    final croppedFile = await ImageCropper().cropImage(
+      sourcePath: imagePath,
+      aspectRatio: CropAspectRatio(ratioX: 1, ratioY: 1),
+      cropStyle: CropStyle.circle,
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: 'Recadrer votre photo de profil',
+          toolbarColor: Colors.blue[600],
+          toolbarWidgetColor: Colors.white,
+          initAspectRatio: CropAspectRatioPreset.square,
+          lockAspectRatio: true,
+          hideBottomControls: false,
+          statusBarColor: Colors.blue[600],
+        ),
+        IOSUiSettings(
+          title: 'Recadrer votre photo de profil',
+          doneButtonTitle: 'Terminer',
+          cancelButtonTitle: 'Annuler',
+          aspectRatioLockEnabled: true,
+        ),
+      ],
+    );
+
+    if (croppedFile != null) {
+      setState(() {
+        _selectedProfileImage = File(croppedFile.path);
+      });
+
+      // Télécharger l'image recadrée
+      _uploadProfileImage();
+    }
+  }
+
+  // Méthode pour télécharger l'image de profil
+  Future<void> _uploadProfileImage() async {
+    if (_selectedProfileImage == null) return;
+
+    setState(() {
+      _isUploadingProfile = true;
+    });
+
+    try {
+      // Créer une requête multipart
+      var request = http.MultipartRequest(
+        'PUT',
+        Uri.parse('${Api.baseUrl}/profile/photo'),
+      );
+
+      // Ajouter le token d'authentification
+      request.headers['Authorization'] = 'Bearer ${widget.token}';
+
+      // Ajouter le fichier image
+      request.files.add(await http.MultipartFile.fromPath(
+        'profilePhoto',
+        _selectedProfileImage!.path,
+        contentType: MediaType('image', 'jpeg'),
+      ));
+
+      // Envoyer la requête
+      var response = await request.send();
+      var responseBody = await response.stream.bytesToString();
+      print('Response status: ${response.statusCode}');
+      print('Response body: $responseBody');
+
+      if (response.statusCode == 200) {
+        // Recharger les données du profil pour afficher la nouvelle image
+        loadProfile();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Photo de profil mise à jour avec succès')),
+        );
+      } else {
+        // Gérer l'erreur
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors du téléchargement de l\'image: ${response.statusCode}')),
+        );
+      }
+    } catch (e) {
+      print('Erreur lors du téléchargement: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur: $e')),
+      );
+    } finally {
+      setState(() {
+        _isUploadingProfile = false;
+      });
+    }
+  }
+
+  Future<dynamic> fetchProfile() async {
+    final url = '${Api.baseUrl}/profile/me';
+
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Authorization': 'Bearer ${widget.token}',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        print('Profile response: ${response.body}');
+        return json.decode(response.body);
+      } else {
+        print("Erreur HTTP: ${response.statusCode}");
+        throw Exception('Failed to fetch profile: ${response.statusCode}');
+      }
+    } catch (e) {
+      print("Erreur de requête: $e");
+      throw Exception('Error fetching profile: $e');
+    }
+  }
+
+  Future<dynamic> fetchPosts(String idUser) async {
+    final url = '${Api.baseUrl}/posts/user/$idUser';
+
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Authorization': 'Bearer ${widget.token}',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        print("Erreur HTTP: ${response.statusCode}");
+        throw Exception('Failed to fetch posts: ${response.statusCode}');
+      }
+    } catch (e) {
+      print("Erreur de requête: $e");
+      throw Exception('Error fetching posts: $e');
+    }
+  }
+
+  void loadProfile() async {
+    try {
+      final profileData = await fetchProfile();
+
+      if (profileData != null && profileData['profile'] != null) {
+        // final postData = await fetchPosts(profileData['profile']['id_user']);
+
+
+        if (mounted) {
+          setState(() {
+            profile = profileData['profile'];
+            // posts = postData['posts'];
+          });
+        }
+      }
+    } catch (e) {
+      print("Erreur lors du chargement du profil : $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors du chargement du profil')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (profile == null) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildProfileHeader(),
-            _buildProfileInfo(),
-            _buildProfileStats(),
-            _buildProfileActions(),
-            _buildDivider(),
-            _buildPostsSection(),
-          ],
+      body: RefreshIndicator(
+        onRefresh: () async {
+          loadProfile();
+        },
+        child: SingleChildScrollView(
+          physics: AlwaysScrollableScrollPhysics(),
+          child: Column(
+            children: [
+              _buildProfileHeader(),
+              _buildProfileInfo(),
+              _buildProfileStats(),
+              _buildProfileActions(),
+              _buildDivider(),
+              _buildPostsSection(),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildProfileHeader() {
-    return Container(
+    return SizedBox(
       height: 220,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          // Cover image with gradient overlay
+          // Photo de couverture avec overlay gradient
           Container(
             width: double.infinity,
             height: 150,
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: NetworkImage(
-                  'https://media.licdn.com/dms/image/v2/D4D16AQE-BpAZSleNiQ/profile-displaybackgroundimage-shrink_350_1400/profile-displaybackgroundimage-shrink_350_1400/0/1738106643918?e=1750291200&v=beta&t=yVCaIgS0STCYTViksTxb3GC1Wtl-hXkBaqGksXq5bVo',
-                ),
-                fit: BoxFit.cover,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 10,
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
+            color: Colors.blue[100],
             child: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -142,8 +324,8 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
           ),
-          
-          // Profile picture with border and shadow
+
+          // Photo de profil avec bordure et ombre
           Positioned(
             top: 85,
             left: 20,
@@ -161,38 +343,27 @@ class _ProfilePageState extends State<ProfilePage> {
               child: CircleAvatar(
                 radius: 65,
                 backgroundColor: Colors.white,
-                child: CircleAvatar(
-                  radius: 62,
-                  backgroundColor: Colors.white,
-                  child: ClipOval(
-                    child: Image.network(
-          'https://media.licdn.com/dms/image/v2/D4D22AQGStRRs6la14g/feedshare-shrink_800/B4DZYXfK8nG4Ag-/0/1744150772065?e=1747267200&v=beta&t=EoR1gz6Usd0RayI-AzPJ93aaxIGoPjYg7RYt0RZMDM0',
-                      fit: BoxFit.cover,
-                      width: 124,
-                      height: 124,
-                    ),
-                  ),
-                ),
+                child: _isUploadingProfile
+                    ? CircularProgressIndicator()
+                    : CircleAvatar(
+                        radius: 62,
+                        backgroundColor: Colors.white,
+                        child: _selectedProfileImage != null
+                            ? ClipOval(
+                                child: Image.file(
+                                  _selectedProfileImage!,
+                                  width: 124,
+                                  height: 124,
+                                  fit: BoxFit.cover,
+                                ),
+                              )
+                            : _buildProfileImage(),
+                      ),
               ),
             ),
           ),
-          
-          Positioned(
-            top: 10,
-            right: 10,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.6),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: IconButton(
-                icon: Icon(Icons.camera_alt, color: Colors.white, size: 20),
-                onPressed: () {},
-                tooltip: 'Modifier la photo de couverture',
-              ),
-            ),
-          ),
-          
+
+          // Bouton pour modifier la photo de profil
           Positioned(
             top: 180,
             left: 105,
@@ -205,7 +376,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               child: IconButton(
                 icon: Icon(Icons.camera_alt, color: Colors.white, size: 16),
-                onPressed: () {},
+                onPressed: () => _showImageSourceDialog(),
                 constraints: BoxConstraints.tightFor(width: 30, height: 30),
                 padding: EdgeInsets.zero,
                 tooltip: 'Modifier la photo de profil',
@@ -214,6 +385,54 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ],
       ),
+    );
+  }
+
+  // Méthode séparée pour construire l'image de profil avec gestion d'erreur
+  Widget _buildProfileImage() {
+    // Vérifier si nous avons une URL d'image de profil
+    if (profile != null) {
+      // Afficher tous les champs du profil pour le débogage
+      print('Profile data: $profile');
+      
+      // Vérifier les différentes clés possibles pour l'URL de l'image
+      String? imageUrl;
+      
+      if (profile!.containsKey('profilePhotoFilename') && profile!['profilePhotoFilename'] != null) {
+        imageUrl = '${Api.baseUrl}/uploads/${profile!['profilePhotoFilename']}';
+      } else if (profile!.containsKey('avatarUrl') && profile!['avatarUrl'] != null) {
+        imageUrl = '${Api.baseUrl}/uploads/${profile!['avatarUrl']}';
+      } else if (profile!.containsKey('photoUrl') && profile!['photoUrl'] != null) {
+        imageUrl = profile!['photoUrl'];
+      }
+      
+      if (imageUrl != null) {
+        print('Using profile image URL: $imageUrl');
+        return ClipOval(
+          child: CachedNetworkImage(
+            imageUrl: imageUrl,
+            width: 124,
+            height: 124,
+            fit: BoxFit.cover,
+            placeholder: (context, url) => CircularProgressIndicator(),
+            errorWidget: (context, url, error) {
+              print('Error loading image: $error');
+              return Icon(
+                Icons.person,
+                size: 50,
+                color: Colors.grey[700],
+              );
+            },
+          ),
+        );
+      }
+    }
+    
+    // Fallback à l'icône par défaut
+    return Icon(
+      Icons.person,
+      size: 50,
+      color: Colors.grey[700],
     );
   }
 
@@ -231,7 +450,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Imad Tahiri",
+                      '${profile?['firstName'] ?? ''} ${profile?['lastName'] ?? ''}',
                       style: TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
@@ -240,27 +459,14 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     SizedBox(height: 4),
                     Text(
-                      "Software Engineering Student",
+                      profile?['bio'] ?? 'Aucune bio',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 14,
                         color: Colors.black54,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                     SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
-                        SizedBox(width: 4),
-                        Text(
-                          "Khouribga, Maroc",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
                   ],
                 ),
               ),
@@ -270,7 +476,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                       borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -279,29 +485,22 @@ class _ProfilePageState extends State<ProfilePage> {
                         SizedBox(width: 4),
                         TextButton(
                           child: Text(
-                            "209 relations",
-                          style: TextStyle(
-                            color: Colors.blue[700],
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
+                            "Relations",
+                            style: TextStyle(
+                              color: Colors.blue[700],
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
                           ),
-                          ),
-                          onPressed: ()=>{
-                            Navigator.push(context, MaterialPageRoute(
-                              builder: (context) => FriendsPage(),
-                            ))
+                          onPressed: () => {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => FriendsPage(),
+                                ))
                           },
                         ),
                       ],
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    "Ensa Khouribga",
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[700],
-                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
@@ -335,7 +534,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 SizedBox(height: 8),
                 Text(
-                  "Étudiant en génie informatique passionné par le développement mobile et l'intelligence artificielle. Actuellement en 2ème année à l'EMI.",
+                  profile?['about'] ??
+                      "Étudiant en génie informatique passionné par le développement mobile.",
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.black87,
@@ -368,11 +568,12 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildStatItem("Publications", "67"),
+          _buildStatItem("Publications", posts?.length.toString() ?? "0"),
           _buildVerticalDivider(),
-          _buildStatItem("Abonnés", "412"),
+          _buildStatItem(
+              "Abonnés", profile?['followersCount']?.toString() ?? "0"),
           _buildVerticalDivider(),
-          _buildStatItem("Vues", "1.2K"),
+          _buildStatItem("Vues", profile?['viewsCount']?.toString() ?? "0"),
         ],
       ),
     );
@@ -433,7 +634,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: isFollowing ? Colors.grey[200] : Colors.blue[600],
+                backgroundColor:
+                    isFollowing ? Colors.grey[200] : Colors.blue[600],
                 padding: EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -471,13 +673,48 @@ class _ProfilePageState extends State<ProfilePage> {
               border: Border.all(color: Colors.grey[300]!),
             ),
             child: IconButton(
-              onPressed: () {},
+              onPressed: () {
+                _showOptionsMenu();
+              },
               icon: Icon(Icons.more_horiz, color: Colors.grey[700]),
               tooltip: 'Plus d\'options',
             ),
           ),
         ],
       ),
+    );
+  }
+
+  void _showOptionsMenu() {
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.edit, color: Colors.blue[600]),
+                title: Text('Modifier le profil'),
+                onTap: () {
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.settings, color: Colors.blue[600]),
+                title: Text('Paramètres du compte'),
+                onTap: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -490,39 +727,52 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildPostsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 15),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    if (posts == null || posts!.isEmpty) {
+      return Container(
+        padding: EdgeInsets.all(20),
+        child: Center(
+          child: Column(
             children: [
-              Text(
-                "Publications",
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
+              Icon(
+                Icons.post_add,
+                size: 60,
+                color: Colors.grey[400],
               ),
-              TextButton.icon(
-                onPressed: () {},
-                icon: Icon(Icons.filter_list, size: 18),
-                label: Text("Filtrer"),
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.grey[700],
+              SizedBox(height: 16),
+              Text(
+                "Aucune publication pour le moment",
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
           ),
         ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 15),
+          child: Text(
+            "Publications",
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+        ),
         ListView.builder(
           shrinkWrap: true,
           physics: NeverScrollableScrollPhysics(),
-          itemCount: posts.length,
+          itemCount: posts!.length,
           itemBuilder: (context, index) {
-            final post = posts[index];
+            final post = posts![index];
             return Container(
               margin: EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(
@@ -536,13 +786,22 @@ class _ProfilePageState extends State<ProfilePage> {
                 ],
               ),
               child: Post(
-                name: post['name']!,
-                role: post['role']!,
-                time: post['time']!,
-                description: post['description'],
-                imageUrl: post['imageUrl'],
-                likes: post['likes'] ?? 0,
-                isLiked: post['isLiked'],
+                key: ValueKey('post_${post['id']}'),
+                authorId: post['author']?['id'] ?? '',
+                relation: '',
+                token: widget.token,
+                postId: post['id'],
+                name: post['author']?['firstName'] ?? 'Nom inconnu',
+                role: 'Student',
+                time:
+                    post['createdAt']?['year']?['low']?.toString() ?? 'inconnu',
+                description: post['content'],
+                filename: post['attachments'].isNotEmpty
+                          ? post['attachments'][0]['filename']
+                          : '',
+                likes: post['likesCount'] ?? 0,
+                isLiked: post['hasLiked'] ?? false,
+                authorImage: post['author']['profilePhotoUrl'],
               ),
             );
           },

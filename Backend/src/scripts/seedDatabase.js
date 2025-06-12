@@ -1,223 +1,155 @@
-const { connectDatabase, neo4jDriver } = require('../config/database');
-const { connectMongoDB, mongoose } = require('../config/mongodb'); // Add this
-const bcrypt = require('bcrypt');
-const SchoolUser = require('../models/schoolUser.model'); // Add this
+// const mongoose = require('mongoose');
+// const Comment = require('../models/comment.model'); // Vérifie le chemin de ton modèle
 
-// Sample data
-// Test credentials - all accounts use password: test123
-const users = [
-    {
-        email: 'test.prof@test.com',
-        password: 'test123',
-        firstName: 'John',
-        lastName: 'Smith',
-        role: 'professor',
-        department: 'Computer Science',
-        bio: 'Professor of Computer Science with 15 years of experience in AI and Machine Learning.',
-        dateOfBirth: '1975-05-15'
-    },
-    {
-        email: 'test.prof2@test.com',
-        password: 'test123',
-        firstName: 'Emily',
-        lastName: 'Jones',
-        role: 'professor',
-        department: 'Mathematics',
-        bio: 'Mathematics professor specializing in Advanced Calculus and Number Theory.',
-        dateOfBirth: '1980-03-22'
-    },
-    {
-        email: 'test.student@test.com',
-        password: 'test123',
-        firstName: 'Alice',
-        lastName: 'Johnson',
-        role: 'student',
-        major: 'Computer Science',
-        bio: 'Third-year CS student interested in web development and AI.',
-        dateOfBirth: '2000-08-10'
-    },
-    {
-        email: 'test.student2@test.com',
-        password: 'test123',
-        firstName: 'Bob',
-        lastName: 'Wilson',
-        role: 'student',
-        major: 'Mathematics',
-        bio: 'Second-year Mathematics student passionate about cryptography.',
-        dateOfBirth: '2001-02-28'
-    },
-    {
-        email: 'test.student3@test.com',
-        password: 'test123',
-        firstName: 'Carol',
-        lastName: 'Brown',
-        role: 'student',
-        major: 'Computer Science',
-        bio: 'Final year student focusing on software engineering.',
-        dateOfBirth: '1999-11-15'
-    }
+// const targetPostId = 'e53bf74d-cf54-497b-9578-79ab0eb7b05f';
+// const mongoUri = 'mongodb://127.0.0.1:27017/test';
+
+// async function deleteCommentsByPost() {
+//   try {
+//     await mongoose.connect(mongoUri, {
+//       useNewUrlParser: true,
+//       useUnifiedTopology: true,
+//     });
+
+//     console.log(`🗑️ Suppression des commentaires du post ${targetPostId}...`);
+
+//     const result = await Comment.deleteMany({ postId: targetPostId });
+
+//     console.log(`✅ ${result.deletedCount} commentaire(s) supprimé(s).`);
+
+//     await mongoose.disconnect();
+//     process.exit(0);
+//   } catch (error) {
+//     console.error("❌ Erreur lors de la suppression :", error);
+//     process.exit(1);
+//   }
+// }
+
+// deleteCommentsByPost();
+
+// const mongoose = require('mongoose');
+// const { Schema } = mongoose;
+
+// const documentSchema = new Schema({
+//   _id: String,
+//   postId: String,
+//   comments: [
+//     {
+//       content: String,
+//       user: {
+//         id: String,
+//         name: String,
+//         email: String,
+//       },
+//       createdAt: { type: Date, default: Date.now },
+//     },
+//   ],
+// });
+
+// const PostWithComments = mongoose.model('PostWithComments', documentSchema);
+
+// const mongoUri = 'mongodb://127.0.0.1:27017/test';
+
+// const postId = 'e53bf74d-cf54-497b-9578-79ab0eb7b05f';
+
+// const randomComments = [
+//   "Très bon article !",
+//   "Merci pour le partage.",
+//   "C’est vraiment utile.",
+//   "Bonne idée !",
+//   "Super intéressant.",
+//   "Merci pour l'explication !",
+//   "Je vais essayer ça bientôt.",
+// ];
+
+// const users = [
+//   {
+//     id: '59b8f4f7-acc2-422a-a8c1-98c96e9a4563',
+//     name: 'Alice Dupont',
+//     email: 'user1@example.com',
+//   },
+//   {
+//     id: 'd6ac2a29-a88d-460e-b92a-9a7b909d4c1b',
+//     name: 'Jean Martin',
+//     email: 'user2@example.com',
+//   },
+// ];
+
+// async function insertSinglePostWithComments() {
+//   try {
+//     await mongoose.connect(mongoUri, {
+//       useNewUrlParser: true,
+//       useUnifiedTopology: true,
+//     });
+
+//     const comments = [];
+
+//     for (let i = 0; i < 10; i++) {
+//       const user = users[Math.floor(Math.random() * users.length)];
+//       const content = randomComments[Math.floor(Math.random() * randomComments.length)];
+
+//       comments.push({
+//         content,
+//         user,
+//         createdAt: new Date(),
+//       });
+//     }
+
+//     const doc = new PostWithComments({
+//       _id: postId,
+//       postId: 'mon-post-ref-123', // à adapter selon ton usage
+//       comments,
+//     });
+
+//     await doc.save();
+//     console.log('✅ Document inséré avec succès');
+
+//     await mongoose.disconnect();
+//     process.exit(0);
+//   } catch (error) {
+//     console.error('❌ Erreur lors de l’insertion du document :', error);
+//     process.exit(1);
+//   }
+// }
+
+// insertSinglePostWithComments();
+
+
+const axios = require('axios');
+
+const API_URL = 'http://localhost:8081/comments'; // Adapt to your base URL
+const postId = 'e53bf74d-cf54-497b-9578-79ab0eb7b05f';
+
+const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZF91c2VyIjoiZDZhYzJhMjktYTg4ZC00NjBlLWI5MmEtOWE3YjkwOWQ0YzFiIiwiZW1haWwiOiJ0ZXN0LnN0dWRlbnQyQHRlc3QuY29tIiwicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3NDc0Mjk1MzQsImV4cCI6MTc0NzUxNTkzNH0.N9kacdtjbeDVxVIP_M_-eyk0if8FC_h1oP6ukRx2njA';
+
+const comments = [
+  "Très bon article !",
+  "Merci pour le partage.",
+  "C’est vraiment utile.",
+  "Bonne idée !",
+  "Super intéressant.",
+  "Merci pour l'explication !",
+  "Je vais essayer ça bientôt.",
 ];
 
-const seedDatabase = async () => {
+async function insertComments() {
+  for (const content of comments) {
     try {
-        // Connect to databases
-        await connectDatabase();
-        await connectMongoDB(); // Add this
-        const session = neo4jDriver.session();
-        
-        console.log('🗑️ Clearing existing data...');
-        await session.run('MATCH (n) DETACH DELETE n');
-        await SchoolUser.deleteMany({}); // Clear MongoDB collection
-
-        console.log('👥 Creating school users in MongoDB...');
-        // Create school users in MongoDB first
-        const schoolUsers = await Promise.all(users.map(async user => {
-            const schoolUser = new SchoolUser({
-                email: user.email,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                role: user.role,
-                department: user.department,
-                major: user.major,
-                dateOfBirth: user.dateOfBirth
-            });
-            return schoolUser.save();
-        }));
-        console.log(`✅ Created ${schoolUsers.length} school users in MongoDB`);
-
-        console.log('👥 Creating users in Neo4j...');
-        for (const user of users) {
-            const salt = await bcrypt.genSalt(10);
-            const hashedPassword = await bcrypt.hash(user.password, salt);
-            const id_user = require('crypto').randomUUID();
-            await session.run(
-                'CREATE (u:User {id_user: $id_user, email: $email, password: $password, firstName: $firstName, ' +
-                'lastName: $lastName, role: $role, ' +
-                (user.role === 'professor' ? 'department: $department, ' : 'major: $major, ') +
-                'bio: $bio, dateOfBirth: $dateOfBirth, isVerified: true})',
-                { ...user, id_user, password: hashedPassword }
-            );
+      const res = await axios.post(`${API_URL}/${postId}`, {
+        content,
+        parentCommentId: null, // ou un ID si c'est une réponse à un commentaire
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         }
+      });
 
-        console.log('🏛️ Creating classrooms...');
-        const professors = users.filter(u => u.role === 'professor');
-        const students = users.filter(u => u.role === 'student');
-
-        for (const professor of professors) {
-            const classroomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-            const id_classroom = require('crypto').randomUUID();
-            
-            await session.run(
-                'MATCH (p:User {email: $profEmail}) ' +
-                'CREATE (c:Classroom {id_classroom: $id_classroom, name: $name, description: $description, ' +
-                'code: $code, isActive: true}) ' +
-                'CREATE (p)-[:TEACHES]->(c)',
-                {
-                    profEmail: professor.email,
-                    id_classroom,
-                    name: `${professor.department} 101`,
-                    description: `Introduction to ${professor.department}`,
-                    code: classroomCode
-                }
-            );
-
-            // Enroll students
-            for (const student of students) {
-                await session.run(
-                    'MATCH (c:Classroom {code: $code}), (s:User {email: $studentEmail}) ' +
-                    'CREATE (s)-[:ENROLLED_IN]->(c)',
-                    {
-                        code: classroomCode,
-                        studentEmail: student.email
-                    }
-                );
-            }
-        }
-
-        console.log('📝 Creating tasks...');
-        const dueDate = new Date();
-        dueDate.setDate(dueDate.getDate() + 14);
-        
-        const classrooms = await session.run('MATCH (c:Classroom) RETURN c');
-        for (const record of classrooms.records) {
-            const classroom = record.get('c').properties;
-            
-            const id_task = require('crypto').randomUUID();
-            await session.run(
-                'MATCH (c:Classroom {code: $code}) ' +
-                'CREATE (t:Task {id_task: $id_task, title: $title, description: $description, ' +
-                'dueDate: $dueDate, maxPoints: $maxPoints}) ' +
-                'CREATE (c)-[:HAS_TASK]->(t)',
-                {
-                    code: classroom.code,
-                    id_task,
-                    title: `${classroom.name} Final Project`,
-                    description: 'Complete a comprehensive project demonstrating your understanding of the course material.',
-                    dueDate: dueDate.toISOString(),
-                    maxPoints: 100
-                }
-            );
-        }
-
-        console.log('📫 Creating messages...');
-        for (const student of students) {
-            for (const professor of professors) {
-                const id_message = require('crypto').randomUUID();
-                await session.run(
-                    'MATCH (s:User {email: $studentEmail}), (p:User {email: $profEmail}) ' +
-                    'CREATE (m:Message {id_message: $id_message, content: $content, status: "sent", createdAt: datetime()}) ' +
-                    'CREATE (s)-[:SENT]->(m)-[:RECEIVED_BY]->(p)',
-                    {
-                        studentEmail: student.email,
-                        profEmail: professor.email,
-                        id_message,
-                        content: 'Hello Professor, I have a question about the course material.'
-                    }
-                );
-            }
-        }
-
-        console.log('📱 Creating posts...');
-        for (const user of users) {
-            const id_post = require('crypto').randomUUID();
-            await session.run(
-                'MATCH (u:User {email: $email}) ' +
-                'CREATE (p:Post {id_post: $id_post, content: $content, visibility: $visibility, createdAt: datetime()}) ' +
-                'CREATE (u)-[:AUTHORED]->(p)',
-                {
-                    email: user.email,
-                    id_post,
-                    content: 'Excited to be part of this learning community! #Education #Learning',
-                    visibility: 'public'
-                }
-            );
-        }
-
-        console.log('🤝 Creating connections between users...');
-        for (let i = 0; i < students.length - 1; i++) {
-            const id_connection = require('crypto').randomUUID();
-            await session.run(
-                'MATCH (u1:User {email: $email1}), (u2:User {email: $email2}) ' +
-                'CREATE (u1)-[:CONNECTION {id_connection: $id_connection, status: "accepted", createdAt: datetime()}]->(u2)',
-                {
-                    email1: students[i].email,
-                    email2: students[i + 1].email,
-                    id_connection
-                }
-            );
-        }
-
-        console.log('✅ Database seeding completed successfully!');
-        
-        await session.close();
-        await neo4jDriver.close();
-        await mongoose.connection.close(); // Close MongoDB connection
-        
-        process.exit(0);
-    } catch (error) {
-        console.error('❌ Error seeding database:', error);
-        process.exit(1);
+      console.log(`✅ Commentaire ajouté : "${content}"`);
+    } catch (err) {
+      console.error(`❌ Échec pour "${content}"`, err.response?.data || err.message);
     }
-};
+  }
+}
 
-seedDatabase();
+insertComments();

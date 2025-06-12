@@ -1,37 +1,45 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:social_media_app/core/Api.dart';
 import 'package:social_media_app/models/PostModel.dart';
 import 'package:social_media_app/widgets/deatilsPostPage/Comment.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class PostDetails extends StatefulWidget {
   final PostModel post;
 
-  PostDetails({super.key, required this.post});
+  const PostDetails({super.key, required this.post});
 
   @override
   State<PostDetails> createState() => _PostDetailsState();
 }
 
 class _PostDetailsState extends State<PostDetails> {
-  final List<Map<String, String>> comments = [
-    {
-      "userName": "Aya ElMansouri",
-      "role": "Étudiante",
-      "time": "il y a 5 min",
-      "comment": "Super intéressant ce post !"
-    },
-    {
-      "userName": "Youssef Bakkali",
-      "role": "Professeur",
-      "time": "il y a 10 min",
-      "comment": "Merci pour le partage !"
-    },
-    {
-      "userName": "Sara Lahrichi",
-      "role": "Étudiante",
-      "time": "il y a 20 min",
-      "comment": "Je suis d'accord avec toi !"
-    },
-  ];
+  List<Map<String, dynamic>> comments = [];
+  List<Map<String, dynamic>> likes = [];
+
+  //   {
+  //     "userName": "Aya ElMansouri",
+  //     "role": "Étudiante",
+  //     "time": "il y a 5 min",
+  //     "comment": "Super intéressant ce post !"
+  //   },
+  //   {
+  //     "userName": "Youssef Bakkali",
+  //     "role": "Professeur",
+  //     "time": "il y a 10 min",
+  //     "comment": "Merci pour le partage !"
+  //   },
+  //   {
+  //     "userName": "Sara Lahrichi",
+  //     "role": "Étudiante",
+  //     "time": "il y a 20 min",
+  //     "comment": "Je suis d'accord avec toi !"
+  //   },
+  // ];
 
   TextEditingController controller = TextEditingController();
 
@@ -43,6 +51,8 @@ class _PostDetailsState extends State<PostDetails> {
     super.initState();
     _isLiked = widget.post.isLiked;
     _iconColor = _isLiked ? Colors.blue : Colors.grey;
+    _fetchComments();
+    _fetchLikes();
   }
 
   void _toggleColor() {
@@ -50,6 +60,99 @@ class _PostDetailsState extends State<PostDetails> {
       _isLiked = !_isLiked;
       _iconColor = _isLiked ? Colors.blue : Colors.grey;
     });
+  }
+
+  Future<void> _fetchComments() async {
+    String url = "${Api.baseUrl}/comments/post/${widget.post.postId}";
+
+    final pref = await SharedPreferences.getInstance();
+    final token = pref.getString('token');
+
+    if (token == null) {
+      // gérer l'absence de token, si besoin
+      return;
+    }
+
+    final response = await http.get(Uri.parse(url), headers: {
+      'Authorization': 'Bearer $token',
+    });
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> jsonData = jsonDecode(response.body);
+
+      if (jsonData['success'] == true) {
+        print(jsonData);
+        setState(() {
+          comments = List<Map<String, dynamic>>.from(jsonData['data']
+              .map((comment) => Map<String, dynamic>.from(comment)));
+          print("comments");
+          print(comments);
+        });
+      } else {
+        print('Erreur : success = false');
+      }
+    } else {
+      print('Erreur HTTP : ${response.statusCode}');
+    }
+  }
+
+  Future<void> _fetchLikes() async {
+    String url = "${Api.baseUrl}/posts/${widget.post.postId}/likes";
+
+    final pref = await SharedPreferences.getInstance();
+    final token = pref.getString('token');
+
+    if (token == null) {
+      return;
+    }
+
+    final response = await http.get(Uri.parse(url), headers: {
+      'Authorization': 'Bearer $token',
+    });
+
+    if (response.statusCode == 200) {
+      // print(response.body);
+      final Map<String, dynamic> jsonData = jsonDecode(response.body);
+
+      if (jsonData['success'] == true) {
+        // print(jsonData['users']);
+        setState(() {
+          likes = List<Map<String, dynamic>>.from(jsonData['users']['users']
+              .map((liks) => Map<String, dynamic>.from(liks)));
+          // print(likes);
+        });
+      } else {
+        print('Erreur : success = false');
+      }
+    } else {
+      print('Erreur HTTP : ${response.statusCode}');
+    }
+  }
+
+  Future<void> _addComment() async {
+    String url = "${Api.baseUrl}/comments/${widget.post.postId}";
+
+    final pref = await SharedPreferences.getInstance();
+    final token = pref.getString('token');
+
+    if (controller.text.trim().isNotEmpty) {
+      dynamic response = await http.post(Uri.parse(url),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+          body: json.encode({
+            // 'postId': widget.post.postId,
+            'content': controller.text.trim()
+          }));
+
+      print(response.statusCode);
+      if (response.statusCode == 201) {
+        controller.clear(); // ✅ vider le champ
+        FocusScope.of(context).unfocus(); // ✅ enlever le focus
+        _fetchComments();
+      }
+    }
   }
 
   @override
@@ -76,8 +179,8 @@ class _PostDetailsState extends State<PostDetails> {
                     Row(
                       children: [
                         CircleAvatar(
-                          child: Icon(Icons.person, color: Colors.white),
                           backgroundColor: Colors.grey,
+                          child: Icon(Icons.person, color: Colors.white),
                         ),
                         SizedBox(width: 10),
                         Column(
@@ -104,7 +207,7 @@ class _PostDetailsState extends State<PostDetails> {
                         padding: const EdgeInsets.only(top: 20.0),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(10),
-                          child: Image.network(widget.post.imageUrl!),
+                          child: Image.network('${Api.baseUrl}/uploads/${widget.post.imageUrl!}',width: double.infinity,fit: BoxFit.cover,)
                         ),
                       ),
                     SizedBox(height: 10),
@@ -122,6 +225,7 @@ class _PostDetailsState extends State<PostDetails> {
                                 size: 20,
                                 color: const Color.fromARGB(183, 1, 25, 241),
                               ),
+                              SizedBox(width: 3,),
                               Text(widget.post.likes.toString()),
                             ],
                           ),
@@ -132,7 +236,7 @@ class _PostDetailsState extends State<PostDetails> {
                                   FocusScope.of(context).unfocus();
                                 },
                                 child: Text(
-                                  "${widget.post.likes}  Commentaires",
+                                  "${comments.length}  Commentaires",
                                   style: TextStyle(color: Colors.grey),
                                 ),
                               ),
@@ -141,8 +245,13 @@ class _PostDetailsState extends State<PostDetails> {
                         ],
                       ),
                     ),
-                    SizedBox(height: 5,),
-                    Divider(height: 10,thickness: 0.5,),
+                    SizedBox(
+                      height: 5,
+                    ),
+                    Divider(
+                      height: 10,
+                      thickness: 0.5,
+                    ),
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 20),
                       child: Row(
@@ -160,9 +269,7 @@ class _PostDetailsState extends State<PostDetails> {
                             ),
                           ),
                           TextButton.icon(
-                            onPressed: (){
-
-                            },
+                            onPressed: () {},
                             icon: Icon(
                               Icons.comment,
                               color: Colors.grey,
@@ -175,20 +282,22 @@ class _PostDetailsState extends State<PostDetails> {
                         ],
                       ),
                     ),
-                    SizedBox(height: 15,),
+                    SizedBox(
+                      height: 15,
+                    ),
                     Text("Réactions"),
                     SizedBox(
                       height: 60,
                       child: ListView.builder(
-                        itemCount: widget.post.likes,
+                        itemCount: likes.length,
                         scrollDirection: Axis.horizontal,
                         itemBuilder: (context, index) {
                           return Padding(
                             padding:
                                 const EdgeInsets.symmetric(horizontal: 4.0),
                             child: CircleAvatar(
-                              child: Icon(Icons.person, color: Colors.white),
                               backgroundColor: Colors.grey,
+                              child: Icon(Icons.person, color: Colors.white),
                             ),
                           );
                         },
@@ -202,11 +311,28 @@ class _PostDetailsState extends State<PostDetails> {
                       physics: NeverScrollableScrollPhysics(),
                       itemBuilder: (context, index) {
                         final comment = comments[index];
+
+                        DateTime createdAt;
+                        if (comment['createdAt'] != null) {
+                          createdAt = DateTime.parse(comment['createdAt']!);
+                        } else {
+                          createdAt = DateTime(2025);
+                        }
+                        final String formattedTime =
+                            DateFormat('dd/MM/yyyy HH:mm').format(createdAt);
+
+                        final userName = (comment['user']['firstName'] +
+                                " " +
+                                comment['user']['lastName']) ??
+                            'Utilisateur inconnu';
+
+                        final String role = comment['user']['role'];
+
                         return Comment(
-                          userName: comment["userName"]!,
-                          role: comment["role"]!,
-                          time: comment["time"]!,
-                          comment: comment["comment"]!,
+                          userName: userName,
+                          role: role,
+                          time: formattedTime,
+                          comment: comment['content'] ?? '',
                         );
                       },
                     ),
@@ -221,8 +347,8 @@ class _PostDetailsState extends State<PostDetails> {
                 child: Row(
                   children: [
                     CircleAvatar(
-                      child: Icon(Icons.person, color: Colors.white),
                       backgroundColor: Colors.grey,
+                      child: Icon(Icons.person, color: Colors.white),
                     ),
                     SizedBox(width: 6),
                     Expanded(
@@ -252,18 +378,7 @@ class _PostDetailsState extends State<PostDetails> {
                       child: IconButton(
                         icon: Icon(Icons.send, color: Colors.white, size: 20),
                         onPressed: () {
-                          if (controller.text.trim().isNotEmpty) {
-                            setState(() {
-                              comments.add({
-                                "userName": "Anas Zerhoun",
-                                "role": "Étudiant",
-                                "time": "Maintenant",
-                                "comment": controller.text.trim(),
-                              });
-                            });
-                            FocusScope.of(context).unfocus();
-                            controller.clear();
-                          }
+                          _addComment();
                         },
                       ),
                     ),

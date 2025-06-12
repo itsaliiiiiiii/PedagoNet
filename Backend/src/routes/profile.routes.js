@@ -16,7 +16,6 @@ router.get('/me', authenticateToken, async (req, res) => {
         if (!result.success) {
             return res.status(404).json(result);
         }
-        
         res.json(result);
     } catch (error) {
         console.error('Profile retrieval error:', error);

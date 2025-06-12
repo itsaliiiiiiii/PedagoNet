@@ -110,7 +110,7 @@ router.get('/', authenticateToken, async (req, res) => {
         const result = await getPosts(
             req.user.id_user,
             connectedUserIds,
-            parseInt(req.query.limit) || 10,
+            parseInt(req.query.limit) || 100,
             parseInt(req.query.skip) || 0
         );
 

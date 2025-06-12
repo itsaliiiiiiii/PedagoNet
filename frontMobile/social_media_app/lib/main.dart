@@ -1,8 +1,17 @@
 import 'package:flutter/material.dart';
-import 'screens/HomePage.dart';
+import 'package:provider/provider.dart';
+import 'package:social_media_app/provider/PostProvider.dart';
+import 'package:social_media_app/screens/EntryPage.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => PostProvider()),
+      ],
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -14,7 +23,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(primaryColor: const Color.fromARGB(255, 221, 218, 218)),
       debugShowCheckedModeBanner: false,
       routes: {
-        '/': (context) => HomePage(),
+        '/': (context) => EntryPage(),
       },
     );
   }

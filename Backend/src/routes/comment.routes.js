@@ -6,7 +6,7 @@ const {
     getPostComments,
     getCommentReplies,
     updateComment,
-    deleteComment
+    deleteComment,
 } = require('../services/comment.service');
 
 // Create a new comment or reply
@@ -29,7 +29,8 @@ router.post('/:postId', authenticateToken, async (req, res) => {
 // Get comments for a post
 router.get('/post/:postId', authenticateToken, async (req, res) => {
     try {
-        const limit = parseInt(req.query.limit) || 10;
+        // const limit = parseInt(req.query.limit) || 100;
+        const limit = 100;
         const skip = parseInt(req.query.skip) || 0;
 
         const result = await getPostComments(
@@ -48,7 +49,7 @@ router.get('/post/:postId', authenticateToken, async (req, res) => {
 // Get replies for a comment
 router.get('/:commentId/replies', authenticateToken, async (req, res) => {
     try {
-        const limit = parseInt(req.query.limit) || 10;
+        const limit = parseInt(req.query.limit) || 100;
         const skip = parseInt(req.query.skip) || 0;
 
         const result = await getCommentReplies(

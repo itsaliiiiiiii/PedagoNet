@@ -16,6 +16,7 @@ const {
 // Create a new classroom (Professor only)
 router.post('/', authenticateToken, checkProfessorRole, async (req, res) => {
     try {
+        console.log(req.body);
         const result = await createClassroom(req.user.id_user, req.body);
         res.status(result.success ? 201 : 400).json(result);
     } catch (error) {

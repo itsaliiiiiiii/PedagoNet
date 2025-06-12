@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const { connectDatabase } = require('./src/config/database');
 const { connectMongoDB } = require('./src/config/mongodb');
 const authRoutes = require('./src/routes/auth.routes');
@@ -9,9 +10,9 @@ const messageRoutes = require('./src/routes/message.routes');
 const taskRoutes = require('./src/routes/task.routes');
 const commentsRoutes = require('./src/routes/comment.routes');
 const profileRoutes = require('./src/routes/profile.routes');
+const commentRoutes = require('./src/routes/comment.routes');
 const cookieParser = require('cookie-parser');
 require('dotenv').config();
-const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -20,14 +21,14 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(cookieParser());
 
+
 // Connect to database
 connectDatabase();
 connectMongoDB();
 
-
-// CORS middleware
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
+    // res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
+    res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Credentials', 'true');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
@@ -46,7 +47,9 @@ app.use('/posts', postRoutes);
 app.use('/messages', messageRoutes);
 app.use('/comments', commentsRoutes);
 app.use('/tasks', taskRoutes);
-app.use('/upload', express.static(path.join(__dirname, 'upload')));
+app.use('/comments', commentRoutes);
+
+app.use('/uploads', express.static(path.join(__dirname, 'upload')));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

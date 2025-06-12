@@ -28,7 +28,7 @@ class Neo4jRepository extends BaseRepository {
     async getConnections(userId, status = null) {
         const relationshipType = status === 'accepted' ? 'CONNECTION' : 'REQUESTED';
         const query = status ?
-            `MATCH (u:User {id_user: $userId})<-[r:${relationshipType} {status: $status}]-(other:User)
+            `MATCH (u:User {id_user: $userId})-[r:${relationshipType} {status: $status}]-(other:User)
             RETURN other.id_user as id,
                    other.email as email,
                    other.firstName as firstName,

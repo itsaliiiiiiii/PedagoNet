@@ -28,13 +28,13 @@ class Comment extends StatelessWidget {
                 spacing: 10,
                 children: [
                   CircleAvatar(
+                    backgroundColor: const Color.fromARGB(255, 137, 136, 136),
+                    radius: 20,
                     child: Icon(
                       Icons.person,
                       size: 30,
                       color: const Color.fromARGB(255, 59, 58, 58),
                     ),
-                    backgroundColor: const Color.fromARGB(255, 137, 136, 136),
-                    radius: 20,
                   ),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -42,9 +42,12 @@ class Comment extends StatelessWidget {
                       Text(userName,
                           style: TextStyle(
                               fontSize: 15, fontWeight: FontWeight.w600)),
-                      Text(role,
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.w300)),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 3.0),
+                        child: Text(role,
+                            style: TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.w300)),
+                      ),
                     ],
                   ),
                 ],
@@ -54,7 +57,7 @@ class Comment extends StatelessWidget {
             ],
           ),
           Padding(
-            padding: const EdgeInsets.only(left: 50,top: 20), // pour aligner avec le début du texte à côté de l'avatar
+            padding: const EdgeInsets.only(left: 65,top: 15), // pour aligner avec le début du texte à côté de l'avatar
             child: Text(
               comment,
               textAlign: TextAlign.left,
