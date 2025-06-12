@@ -151,7 +151,7 @@ const getUserPosts = async (targetUserId, viewerId, isViewerConnected) => {
         const results = await postRepository.getUserPosts(targetUserId, viewerId, isViewerConnected);
         const posts = results.map(({ post, author }) => ({
             ...post,
-            attachments: post.attachments ? post.attachments.map(att => JSON.parse(att)) : [],
+            attachments: post.attachments || [],
             author: {
                 id: author.id_user,
                 firstName: author.firstName,

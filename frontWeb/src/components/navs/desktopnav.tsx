@@ -1,14 +1,14 @@
-'use client';
+"use client"
 
-import { usePathname } from 'next/navigation';
-import Link from 'next/link';
-import NavButton from '@/components/navs/navButton';
-import { useState, useEffect, useRef } from 'react';
-import { ChevronDown, Search, User, Home, Users, MessagesSquare, Bell,Settings,LogOut } from 'lucide-react';
-import Logo from '@/components/logo';
+import { usePathname } from "next/navigation"
+import Link from "next/link"
+import NavButton from "@/components/navs/navButton"
+import { useState, useEffect, useRef } from "react"
+import { ChevronDown, Search, User, Home, Users, MessagesSquare, Bell, Settings, LogOut, BookOpen } from "lucide-react"
+import Logo from "@/components/logo"
 
 export default function DesktopNav() {
-  const pathname = usePathname();
+  const pathname = usePathname()
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -30,11 +30,9 @@ export default function DesktopNav() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
           <div className="flex items-center gap-3 flex-1">
-            <Link href="/home" className="flex items-center gap-2">
+            <Link href ="feed" className="flex items-center gap-2">
               <Logo />
-              <span className="hidden sm:inline text-sm font-bold text-slate-600 dark:text-white">
-                ENSAConnect
-              </span>
+              <span className="hidden sm:inline text-sm font-bold text-slate-600 dark:text-white">ENSAConnect</span>
             </Link>
             <div className="relative flex-1 max-w-xs ml-2">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -49,29 +47,36 @@ export default function DesktopNav() {
 
           {/* Navigation - Hidden on mobile */}
           <nav className="hidden md:flex items-center ml-6 gap-1 sm:gap-2">
+            {/* <NavButton icon={<Home />} label="Accueil" href="/home" active={pathname === "/home"} /> */}
             <NavButton 
               icon={<Home />} 
               label="Accueil" 
-              href="/home" 
-              active={pathname === '/home'} 
+              href="/feed" 
+              active={pathname === '/feed'} 
             />
-            <NavButton 
-              icon={<Users />} 
-              label="Réseau" 
-              href="/network/requests" 
-              active={pathname === '/network/requests' } 
+            <NavButton
+              icon={<Users />}
+              label="Réseau"
+              href="/network/requests"
+              active={pathname === "/network/requests"}
             />
-            <NavButton 
-              icon={<MessagesSquare />} 
-              label="Discussions" 
-              href="/messages" 
-              active={pathname.startsWith('/messages')} 
+            <NavButton
+              icon={<BookOpen />}
+              label="Classroom"
+              href="/classroom"
+              active={pathname.startsWith("/classroom")}
             />
-            <NavButton 
-              icon={<Bell />} 
-              label="Notifications" 
-              href="/notifications" 
-              active={pathname === '/notifications'} 
+            <NavButton
+              icon={<MessagesSquare />}
+              label="Discussions"
+              href="/messages"
+              active={pathname.startsWith("/messages")}
+            />
+            <NavButton
+              icon={<Bell />}
+              label="Notifications"
+              href="/notifications"
+              active={pathname === "/notifications"}
             />
             <div className="relative" ref={menuRef}>
               <button
@@ -133,6 +138,5 @@ export default function DesktopNav() {
         </div>
       </div>
     </header>
-  );
+  )
 }
-

@@ -5,6 +5,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { AlertCircle, Check } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useSetRole } from "@/app/context/RoleContext"
 
 export default function LoginForm() {
   const router = useRouter()
@@ -15,6 +16,7 @@ export default function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const searchParams = useSearchParams()
   const [successMessage, setSuccessMessage] = useState("")
+  const setRole = useSetRole();
 
   useEffect(() => {
     if (searchParams.get("registered") === "true") {
@@ -26,6 +28,7 @@ export default function LoginForm() {
     e.preventDefault()
     setError("")
     setIsLoading(true)
+    setRole(null)
 
     try {
       const response = await fetch("http://localhost:8080/auth/login", {
@@ -41,8 +44,9 @@ export default function LoginForm() {
         const { message } = await response.json()
         throw new Error(message || "Failed to login")
       }
-
-      router.push("/home")
+      const data = await response.json();  
+      setRole(data.user.role);
+      router.push("/feed")
     } catch (err: any) {
       setError(err.message || "Failed to login. Please check your credentials.")
     } finally {

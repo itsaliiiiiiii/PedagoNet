@@ -1,6 +1,12 @@
 const taskRepository = require('../repositories/task.repository');
+
 const createTask = async (professorId, classroomId, taskData) => {
     try {
+        // Validate attachments if present
+        if (taskData.attachments && !Array.isArray(taskData.attachments)) {
+            return { success: false, message: 'Attachments must be an array' };
+        }
+
         const task = await taskRepository.createTask(professorId, classroomId, taskData);
         if (!task) {
             return { success: false, message: 'Failed to create task' };
@@ -21,15 +27,19 @@ const getClassroomTasks = async (classroomId, userId, role) => {
         const records = await taskRepository.getClassroomTasks(classroomId, userId, role);
         const tasks = records.map(record => {
             const task = record.get('t').properties;
+            const attachments = record.get('attachments');
+            
             if (role === 'professor') {
                 return {
                     ...task,
+                    attachments,
                     submissionCount: record.get('submissionCount').toNumber()
                 };
             } else {
-                const submission = record.get('s') ? record.get('s').properties : null;
+                const submission = record.get('sub') ? record.get('sub').properties : null;
                 return {
                     ...task,
+                    attachments,
                     submission
                 };
             }
@@ -45,7 +55,6 @@ const getClassroomTasks = async (classroomId, userId, role) => {
     }
 };
 
-// Add new function to get all tasks from enrolled classrooms
 const getStudentTasks = async (studentId) => {
     try {
         const records = await taskRepository.getStudentTasks(studentId);
@@ -78,6 +87,11 @@ const getStudentTasks = async (studentId) => {
 
 const submitTask = async (taskId, studentId, submissionData) => {
     try {
+        // Validate attachments if present
+        if (submissionData.attachments && !Array.isArray(submissionData.attachments)) {
+            return { success: false, message: 'Attachments must be an array' };
+        }
+
         const submission = await taskRepository.submitTask(taskId, studentId, submissionData);
         if (!submission) {
             return { success: false, message: 'Failed to submit task' };
@@ -115,5 +129,5 @@ module.exports = {
     getClassroomTasks,
     submitTask,
     gradeSubmission,
-    getStudentTasks  // Add the new function to exports
+    getStudentTasks
 };

@@ -1,24 +1,61 @@
 "use client"
 
-import { useState } from "react"
+import type React from "react"
+import Image from "next/image"
+
+import { useState, useEffect, useRef, useCallback } from "react"
 import {
   User,
   Mail,
   Calendar,
   Briefcase,
-  Edit,
-  Settings,
-  Share2,
   MessageSquare,
-  UserPlus,
   Check,
   Clock,
-  Bookmark,
   Search,
+  CheckCircle,
+  XCircle,
+  ImageIcon,
+  AlertCircle,
 } from "lucide-react"
 import DesktopNav from "@/components/navs/desktopnav"
 import MobileNav from "@/components/navs/mobilenav"
 import Post from "@/components/feed/post"
+
+// Type pour les attachements (Copied from home-page.tsx)
+interface Attachment {
+  filename: string
+  originalName: string
+  mimetype: string
+  size: number
+}
+
+// Type pour les données de post (Copied from home-page.tsx)
+interface PostData {
+  id: string
+  author: {
+    id: string
+    name: string
+    avatar: string
+    title: string
+    role?: string
+  }
+  content: string
+  createdAt: string
+  attachments: string // Chaîne JSON d'attachements
+  likes: number
+  comments: number
+  isLiked: boolean
+  visibility: "public" | "friends" | "private"
+}
+
+// Type for connection data (Adapted from friends array and backend response)
+interface ConnectionData {
+  id: string
+  name: string
+  role: string
+  profilePhoto?: string // Assuming backend might return profilePhoto filename
+}
 
 // Formatage de la date
 const formatDate = (dateObj: any) => {
@@ -61,95 +98,416 @@ const calculateAge = (dateObj: any) => {
   return age
 }
 
-export default function ProfilePage() {
+// Process attachments function (Copied from home-page.tsx)
+const processAttachments = (attachmentsJson: string | string[]) => {
+  try {
+    let attachments: Attachment[] = []
+
+    // Case 1: Input is an array of stringified objects
+    if (Array.isArray(attachmentsJson)) {
+      attachments = attachmentsJson
+        .map((item) => {
+          try {
+            return typeof item === "string" ? JSON.parse(item) : item
+          } catch (e) {
+            console.error("Error parsing stringified attachment:", item)
+            return null
+          }
+        })
+        .filter(Boolean) as Attachment[]
+    }
+    // Case 2: Input is a single stringified array
+    else if (typeof attachmentsJson === "string") {
+      try {
+        attachments = JSON.parse(attachmentsJson)
+      } catch (e) {
+        console.error("Error parsing attachments string:", attachmentsJson)
+        return null
+      }
+    }
+
+    if (!attachments || attachments.length === 0) {
+      return null
+    }
+
+    const firstAttachment = attachments[0]
+    const baseUrl = "http://localhost:8080/upload/"
+
+    if (attachments.every((att) => att?.mimetype?.startsWith("image/"))) {
+      return {
+        type: "images",
+        data: attachments.map((att) => `${baseUrl}${att.filename}`),
+      }
+    } else if (firstAttachment.mimetype.startsWith("video/")) {
+      return {
+        type: "video",
+        data: {
+          url: `${baseUrl}${firstAttachment.filename}`,
+          thumbnail: "/placeholder.svg?height=400&width=600&text=Miniature+Vidéo",
+        },
+      }
+    } else {
+      return {
+        type: "document",
+        data: {
+          url: `${baseUrl}${firstAttachment.filename}`,
+          name: firstAttachment.originalName,
+          type: firstAttachment.mimetype,
+          size: firstAttachment.size,
+        },
+      }
+    }
+  } catch (err) {
+    console.error("Error processing attachments:", err)
+    return null
+  }
+}
+
+// Format time ago function (Copied from home-page.tsx)
+const formatTimeAgo = (timestamp: any): string => {
+  if (!timestamp) return "N/A"
+  let postDate: Date
+
+  if (typeof timestamp === "string") {
+    postDate = new Date(timestamp)
+  } else {
+    postDate = new Date(
+      timestamp.year?.low || timestamp.year,
+      (timestamp.month?.low || timestamp.month) - 1,
+      timestamp.day?.low || timestamp.day,
+      timestamp.hour?.low || timestamp.hour,
+      timestamp.minute?.low || timestamp.minute,
+      timestamp.second?.low || timestamp.second,
+    )
+  }
+
+  const now = new Date()
+  const diffInSeconds = Math.floor((now.getTime() - postDate.getTime()) / 1000)
+
+  if (diffInSeconds < 60) return "À l'instant"
+  if (diffInSeconds < 3600) return `Il y a ${Math.floor(diffInSeconds / 60)} min`
+  if (diffInSeconds < 86400) return `Il y a ${Math.floor(diffInSeconds / 3600)} h`
+  if (diffInSeconds < 604800) return `Il y a ${Math.floor(diffInSeconds / 86400)} j`
+
+  return postDate.toLocaleDateString()
+}
+
+// Generate avatar background color (Copied from home-page.tsx)
+const getAvatarBg = (authorId: string, role?: string) => {
+  const avatarColors = [
+    "bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/40 dark:to-blue-800/20",
+    "bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900/40 dark:to-green-800/20",
+    "bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900/40 dark:to-purple-800/20",
+    "bg-gradient-to-br from-pink-100 to-pink-200 dark:from-pink-900/40 dark:to-pink-800/20",
+    "bg-gradient-to-br from-amber-100 to-amber-200 dark:from-amber-900/40 dark:to-amber-800/20",
+  ]
+
+  if (role === "professor") {
+    return "bg-purple-100 dark:bg-purple-900/30"
+  } else if (role === "student") {
+    return "bg-blue-100 dark:bg-blue-900/30"
+  }
+
+  const index = Math.abs(authorId.charCodeAt(0)) % avatarColors.length
+  return avatarColors[index]
+}
+
+export default function MyProfilePage() {
+  const [profile, setProfile] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<"posts" | "about" | "friends">("posts")
+  const [isEditingPhoto, setIsEditingPhoto] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [toast, setToast] = useState<{
+    visible: boolean
+    message: string
+    type: "success" | "error"
+  } | null>(null)
 
-  // Données du profil (normalement récupérées depuis une API)
-  const profile = {
-    firstName: "Carol",
-    lastName: "Brown",
-    createdAt: {
-      year: { low: 2025, high: 0 },
-      month: { low: 5, high: 0 },
-      day: { low: 3, high: 0 },
-      hour: { low: 13, high: 0 },
-      minute: { low: 38, high: 0 },
-      second: { low: 51, high: 0 },
-      nanosecond: { low: 412000000, high: 0 },
-      timeZoneOffsetSeconds: { low: 0, high: 0 },
-    },
-    role: "student",
-    profilePhoto: "profilePhoto-1746440145979-575919258.png",
-    major: "Computer Science",
-    isVerified: true,
-    dateOfBirth: {
-      year: { low: 1999, high: 0 },
-      month: { low: 11, high: 0 },
-      day: { low: 15, high: 0 },
-      hour: { low: 0, high: 0 },
-      minute: { low: 0, high: 0 },
-      second: { low: 0, high: 0 },
-      nanosecond: { low: 0, high: 0 },
-      timeZoneOffsetSeconds: { low: 0, high: 0 },
-    },
-    id_user: "10ec5f6d-a9c0-4bd1-91c5-149f6e2d7733",
-    email: "amine20991@gmail.com",
-    updatedAt: {
-      year: { low: 2025, high: 0 },
-      month: { low: 5, high: 0 },
-      day: { low: 5, high: 0 },
-      hour: { low: 10, high: 0 },
-      minute: { low: 15, high: 0 },
-      second: { low: 46, high: 0 },
-      nanosecond: { low: 40000000, high: 0 },
-      timeZoneOffsetSeconds: { low: 0, high: 0 },
-    },
+  // States for posts
+  const [userPosts, setUserPosts] = useState<PostData[]>([])
+  const [postsPage, setPostsPage] = useState(1)
+  const [hasMorePosts, setHasMorePosts] = useState(true)
+  const [isLoadingPosts, setIsLoadingPosts] = useState(false)
+  const [postsError, setPostsError] = useState<string | null>(null)
+
+  // New states for connections
+  const [userConnections, setUserConnections] = useState<ConnectionData[]>([])
+  const [isLoadingConnections, setIsLoadingConnections] = useState(false)
+  const [connectionsError, setConnectionsError] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState<string>("") // New state for search term
+
+  const postsObserver = useRef<IntersectionObserver | null>(null) // For infinite scroll for posts
+
+  const showToast = (message: string, type: "success" | "error") => {
+    setToast({ visible: true, message, type })
+    setTimeout(() => {
+      setToast(null)
+    }, 3000)
   }
 
-  // Données fictives pour les statistiques
-  const stats = {
-    posts: 42,
-    friends: 128,
+  useEffect(() => {
+    setLoading(true)
+    setError(null)
+    const fetchProfile = async () => {
+      try {
+        const url = `http://localhost:8080/profile/me`
+        const res = await fetch(url, { credentials: "include" })
+        let json = null
+        try {
+          json = await res.json()
+        } catch {
+          setError("Erreur lors du chargement du profil (réponse invalide)")
+          setProfile(null)
+          setLoading(false)
+          return
+        }
+        if (!res.ok || !json?.profile) {
+          setError(json?.message || "Profil introuvable")
+          setProfile(null)
+        } else {
+          setProfile(json.profile)
+        }
+      } catch (e: any) {
+        setError("Impossible de se connecter au serveur")
+        setProfile(null)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchProfile()
+  }, [])
+
+  // Fetch user-specific posts
+  const fetchUserPosts = useCallback(
+    async (pageNumber: number) => {
+      if (!profile?.id_user) return // Ensure profile ID is available
+      setIsLoadingPosts(true)
+      setPostsError(null)
+      try {
+        const limit = 4
+        const skip = (pageNumber - 1) * limit
+
+        const response = await fetch(
+          `http://localhost:8080/posts/user/${profile.id_user}?limit=${limit}&skip=${skip}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+          },
+        )
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch posts")
+        }
+
+        const data = await response.json()
+
+        if (!data.success) {
+          throw new Error(data.message || "Failed to fetch posts")
+        }
+
+        const newPosts = data.posts.map((apiPost: any) => {
+          return {
+            id: apiPost.id,
+            author: {
+              id: apiPost.author.id || "unknown",
+              name: `${apiPost.author.lastName} ${apiPost.author.firstName}`,
+              avatar: apiPost.author.profilePhoto ? `http://localhost:8080/upload/${apiPost.author.profilePhoto}` : "",
+              title:
+                apiPost.author.role === "professor"
+                  ? `Professeur de ${apiPost.author.department || "non spécifié"}`
+                  : apiPost.author.role === "student"
+                    ? `Étudiant en ${apiPost.author.major || "non spécifié"}`
+                    : "Membre",
+              role: apiPost.author.role,
+            },
+            content: apiPost.content,
+            createdAt: apiPost.createdAt,
+            attachments: apiPost.attachments || "[]",
+            likes: apiPost.likesCount || 0,
+            comments: apiPost.comments || 0,
+            isLiked: apiPost.hasLiked || false,
+            visibility: apiPost.visibility || "public",
+          }
+        })
+
+        if (pageNumber === 1) {
+          setUserPosts(newPosts)
+        } else {
+          setUserPosts((prevPosts) => [...prevPosts, ...newPosts])
+        }
+        setHasMorePosts(newPosts.length === limit)
+      } catch (err: any) {
+        console.error("Error fetching user posts:", err)
+        setPostsError(err.message)
+      } finally {
+        setIsLoadingPosts(false)
+      }
+    },
+    [profile],
+  )
+
+  // Initial posts load when profile is ready
+  useEffect(() => {
+    if (profile?.id_user) {
+      fetchUserPosts(1)
+    }
+  }, [profile, fetchUserPosts])
+
+  // Infinite scroll observer for posts
+  const lastPostElementRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (isLoadingPosts || !hasMorePosts) return
+      if (postsObserver.current) postsObserver.current.disconnect()
+
+      postsObserver.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && hasMorePosts && !isLoadingPosts) {
+          setPostsPage((prevPage) => prevPage + 1)
+        }
+      })
+
+      if (node) postsObserver.current.observe(node)
+    },
+    [isLoadingPosts, hasMorePosts],
+  )
+
+  // Load more posts when postsPage changes
+  useEffect(() => {
+    if (postsPage > 1) {
+      fetchUserPosts(postsPage)
+    }
+  }, [postsPage, fetchUserPosts])
+
+  // Fetch user connections
+  useEffect(() => {
+    if (profile?.id_user) {
+      setIsLoadingConnections(true)
+      setConnectionsError(null)
+      const fetchConnections = async () => {
+        try {
+          const response = await fetch("http://localhost:8080/connections", {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+          })
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch connections")
+          }
+
+          const data = await response.json()
+
+          if (!data.success) {
+            throw new Error(data.message || "Failed to fetch connections")
+          }
+
+          // Map backend connections to ConnectionData interface
+          const mappedConnections: ConnectionData[] = data.connections.map((conn: any) => ({
+            id: conn.userId,
+            name: `${conn.firstName} ${conn.lastName}`,
+            role: conn.role,
+            profilePhoto: conn.profilePhoto, // Assuming this field exists
+          }))
+          setUserConnections(mappedConnections)
+        } catch (err: any) {
+          console.error("Error fetching connections:", err)
+          setConnectionsError(err.message)
+        } finally {
+          setIsLoadingConnections(false)
+        }
+      }
+      fetchConnections()
+    }
+  }, [profile]) // Fetch connections when profile is loaded
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      setSelectedFile(event.target.files[0])
+    } else {
+      setSelectedFile(null)
+    }
   }
 
-  // Données fictives pour les publications
-  const posts = [
-    {
-      id: 1,
-      content:
-        "Je viens de terminer mon projet de fin d'études en intelligence artificielle ! Tellement fière du résultat final. #ComputerScience #AI",
-      date: "Il y a 2 jours",
-      likes: 24,
-      comments: 8,
-      image: "https://source.unsplash.com/random/800x600?computer,ai",
-    },
-    {
-      id: 2,
-      content:
-        "Préparation des examens finaux avec mes camarades de classe. Le café est notre meilleur ami en ce moment ! 📚☕",
-      date: "Il y a 1 semaine",
-      likes: 35,
-      comments: 12,
-    },
-    {
-      id: 3,
-      content:
-        "J'ai assisté à une conférence fascinante sur l'avenir de l'informatique quantique aujourd'hui. Les possibilités sont infinies !",
-      date: "Il y a 2 semaines",
-      likes: 18,
-      comments: 5,
-    },
-  ]
+  const handlePhotoUpload = async () => {
+    if (!selectedFile) {
+      showToast("Veuillez sélectionner une image à télécharger.", "error")
+      return
+    }
 
-  // Données fictives pour les amis
-  const friends = [
-    { id: 1, name: "Sophie Martin", role: "Étudiante en Informatique" },
-    { id: 2, name: "Thomas Dubois", role: "Étudiant en Mathématiques" },
-    { id: 3, name: "Emma Petit", role: "Étudiante en Physique" },
-    { id: 4, name: "Lucas Moreau", role: "Étudiant en Informatique" },
-    { id: 5, name: "Léa Bernard", role: "Étudiante en Chimie" },
-    { id: 6, name: "Hugo Leroy", role: "Étudiant en Informatique" },
-  ]
+    setUploadingPhoto(true)
+    const formData = new FormData()
+    formData.append("profilePhoto", selectedFile)
+
+    try {
+      const response = await fetch("http://localhost:8080/profile/photo", {
+        method: "PUT",
+        body: formData,
+        credentials: "include",
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        setProfile((prevProfile: any) => ({
+          ...prevProfile,
+          profilePhoto: data.profilePhotoPath, // Assuming the backend returns the new photo path
+        }))
+        showToast("Photo de profil mise à jour avec succès !", "success")
+        setIsEditingPhoto(false)
+        setSelectedFile(null)
+      } else {
+        throw new Error(data.message || "Échec de la mise à jour de la photo de profil.")
+      }
+    } catch (err: any) {
+      console.error("Error uploading photo:", err)
+      showToast(err.message || "Une erreur est survenue lors du téléchargement de la photo.", "error")
+    } finally {
+      setUploadingPhoto(false)
+    }
+  }
+
+  // Filter connections based on search term
+  const filteredConnections = userConnections.filter((connection) =>
+    connection.name.toLowerCase().includes(searchTerm.toLowerCase()),
+  )
+
+  if (loading) return <div>Chargement...</div>
+
+  if (error || !profile)
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
+        <svg width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg" className="mb-6">
+          <circle cx="48" cy="48" r="44" fill="#F87171" fillOpacity="0.15" />
+          <circle cx="48" cy="48" r="36" fill="#F87171" fillOpacity="0.25" />
+          <circle cx="48" cy="48" r="28" fill="#F87171" fillOpacity="0.35" />
+          <path
+            d="M60 36L36 60M36 36l24 24"
+            stroke="#EF4444"
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        <div className="text-2xl font-extrabold text-red-600 dark:text-red-400 mb-2 font-sans tracking-tight text-center">
+          Oups, ce profil est introuvable !
+        </div>
+        <div className="text-base font-medium text-gray-600 dark:text-gray-300 text-center max-w-md mb-2">
+          Il semble que ce profil n'existe pas ou n'est plus disponible.
+          <br />
+          Vérifiez le lien ou essayez de revenir plus tard.
+        </div>
+        <div className="text-sm text-gray-400 dark:text-gray-500 italic mt-2">
+          {error && <span>Détail : {error}</span>}
+        </div>
+      </div>
+    )
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
@@ -168,12 +526,17 @@ export default function ProfilePage() {
                 {/* Photo de profil avec meilleur positionnement */}
                 <div className="relative -mt-20 mb-4 sm:mb-0 sm:mr-5">
                   <div className="h-36 w-36 rounded-full border-4 border-white dark:border-gray-800 bg-white dark:bg-gray-700 overflow-hidden shadow-md">
-                    <img
+                    <Image
                       alt={`${profile.firstName} ${profile.lastName}`}
                       className="h-full w-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement
-                      }}
+                      src={
+                        profile.profilePhoto
+                          ? `http://localhost:8080/upload/${profile.profilePhotoFilename}`
+                          : "/placeholder.svg"
+                      }
+                      width={144} // Corresponds to h-36 w-36 (144px)
+                      height={144}
+                      priority // This image is likely above the fold
                     />
                   </div>
                   {profile.isVerified && (
@@ -217,52 +580,86 @@ export default function ProfilePage() {
 
               {/* Boutons d'action avec meilleur design */}
               <div className="flex mt-5 sm:mt-0 space-x-2">
-                <button className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors flex items-center shadow-sm">
-                  <MessageSquare className="h-4 w-4 mr-1.5" />
-                  <span>Message</span>
+                <button
+                  onClick={() => setIsEditingPhoto(true)}
+                  className="p-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-sm"
+                  title="Modifier la photo de profil"
+                >
+                  <ImageIcon className="h-5 w-5" />
                 </button>
-                <button className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors flex items-center shadow-sm">
-                  <UserPlus className="h-4 w-4 mr-1.5" />
-                  <span>Suivre</span>
-                </button>
-                <div className="relative group">
-                  <button className="p-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-sm">
-                    <Settings className="h-5 w-5" />
-                  </button>
-                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 z-10 hidden group-hover:block">
-                    <button className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
-                      <div className="flex items-center">
-                        <Edit className="h-4 w-4 mr-2" />
-                        Modifier le profil
-                      </div>
-                    </button>
-                    <button className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
-                      <div className="flex items-center">
-                        <Share2 className="h-4 w-4 mr-2" />
-                        Partager le profil
-                      </div>
-                    </button>
-                    <button className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
-                      <div className="flex items-center">
-                        <Bookmark className="h-4 w-4 mr-2" />
-                        Sauvegarder
-                      </div>
-                    </button>
-                  </div>
-                </div>
               </div>
             </div>
+
+            {/* Photo Edit Input Section */}
+            {isEditingPhoto && (
+              <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg shadow-inner flex flex-col sm:flex-row items-center gap-4">
+                <label htmlFor="profile-photo-upload" className="flex-shrink-0 cursor-pointer">
+                  <div className="h-24 w-24 rounded-full border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:border-blue-500 hover:text-blue-500 transition-colors">
+                    {selectedFile ? (
+                      <Image
+                        src={URL.createObjectURL(selectedFile) || "/placeholder.svg"}
+                        alt="Aperçu"
+                        className="h-full w-full object-cover rounded-full"
+                        width={96} // Corresponds to h-24 w-24 (96px)
+                        height={96}
+                        unoptimized // Temporary client-side blob, no optimization needed
+                      />
+                    ) : (
+                      <ImageIcon className="h-8 w-8" />
+                    )}
+                  </div>
+                  <input
+                    id="profile-photo-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="sr-only"
+                  />
+                </label>
+                <div className="flex-1 text-center sm:text-left">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    {selectedFile ? selectedFile.name : "Sélectionnez une nouvelle photo de profil"}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Fichier JPG, PNG ou GIF. Taille maximale 5MB.
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2 mt-3 sm:mt-0">
+                  <button
+                    onClick={handlePhotoUpload}
+                    disabled={!selectedFile || uploadingPhoto}
+                    className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                  >
+                    {uploadingPhoto ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    ) : (
+                      <Check className="h-4 w-4" />
+                    )}
+                    {uploadingPhoto ? "Téléchargement..." : "Enregistrer la photo"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsEditingPhoto(false)
+                      setSelectedFile(null)
+                    }}
+                    className="px-4 py-2 rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Statistiques avec design amélioré */}
           <div className="border-t border-gray-200 dark:border-gray-700 mt-2">
             <div className="grid grid-cols-2 divide-x divide-gray-200 dark:divide-gray-700">
               <div className="p-4 text-center">
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.posts}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{profile.postCount}</p>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Publications</p>
               </div>
               <div className="p-4 text-center">
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.friends}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{profile.connectionCount}</p>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Amis</p>
               </div>
             </div>
@@ -314,31 +711,69 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-6">
-                {posts.map((post) => (
-                  <Post
-                    key={post.id}
-                    avatar={
-                      <img
-                        alt={`${profile.firstName} ${profile.lastName}`}
-                        className="h-full w-full object-cover rounded-full"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement
-                          
-                        }}
+                {postsError && (
+                  <div className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4" />
+                      <p>{postsError}</p>
+                    </div>
+                  </div>
+                )}
+
+                {userPosts.map((post, index) => {
+                  const media = processAttachments(post.attachments)
+                  const avatarBg = getAvatarBg(post.author.id, post.author.role)
+                  return (
+                    <div key={index} ref={index === userPosts.length - 1 ? lastPostElementRef : null}>
+                      <Post
+                        authorId={post.author.id}
+                        key={post.id}
+                        postId={post.id}
+                        avatar={
+                          post.author.avatar ? (
+                            <Image
+                              src={post.author.avatar || "/placeholder.svg"}
+                              alt={`${post.author.name}'s avatar`}
+                              className="h-full w-full object-cover rounded-full"
+                              width={48}
+                              height={48}
+                            />
+                          ) : (
+                            <User className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                          )
+                        }
+                        avatarBg={avatarBg}
+                        name={post.author.name}
+                        title={post.author.title || "Utilisateur"}
+                        time={formatTimeAgo(post.createdAt)}
+                        content={post.content}
+                        {...(media?.type === "images" ? { images: media.data } : {})}
+                        {...(media?.type === "video" ? { video: media.data } : {})}
+                        {...(media?.type === "document" ? { document: media.data } : {})}
+                        likes={post.likes}
+                        comments={post.comments}
+                        isLiked={post.isLiked}
+                        visibility={post.visibility}
                       />
-                    }
-                    avatarBg="bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/40 dark:to-blue-800/20"
-                    name={`${profile.firstName} ${profile.lastName}`}
-                    title={`${profile.role.charAt(0).toUpperCase() + profile.role.slice(1)} en ${profile.major}`}
-                    time={post.date}
-                    content={post.content}
-                    image={post.image}
-                    imageAlt="Image du post"
-                    likes={post.likes}
-                    comments={post.comments}
-                    isLiked={post.id === 3}
-                  />
-                ))}
+                    </div>
+                  )
+                })}
+
+                {isLoadingPosts && (
+                  <div className="flex justify-center py-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                  </div>
+                )}
+
+                {!hasMorePosts && !isLoadingPosts && userPosts.length > 0 && (
+                  <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+                    Vous avez atteint la fin des publications
+                  </div>
+                )}
+
+                {!isLoadingPosts && userPosts.length === 0 && !postsError && (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">Aucune publication à afficher</div>
+                )}
               </div>
             </div>
           )}
@@ -402,11 +837,13 @@ export default function ProfilePage() {
           {activeTab === "friends" && (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Amis ({friends.length})</h2>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Amis ({filteredConnections.length})</h2>
                 <div className="relative">
                   <input
                     type="text"
                     placeholder="Rechercher un ami..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-8 pr-4 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -414,31 +851,73 @@ export default function ProfilePage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {friends.map((friend) => (
-                  <div
-                    key={friend.id}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
-                  >
-                    <div className="h-12 w-12 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-                      <img
-                        alt={friend.name}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-gray-900 dark:text-white truncate">{friend.name}</h4>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{friend.role}</p>
-                    </div>
-                    <button className="p-1.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-                      <MessageSquare className="h-4 w-4" />
-                    </button>
+                {isLoadingConnections ? (
+                  <div className="flex justify-center py-4 col-span-full">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
                   </div>
-                ))}
+                ) : connectionsError ? (
+                  <div className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300 col-span-full">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4" />
+                      <p>{connectionsError}</p>
+                    </div>
+                  </div>
+                ) : filteredConnections.length === 0 && searchTerm === "" ? (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400 col-span-full">
+                    Aucun ami à afficher
+                  </div>
+                ) : filteredConnections.length === 0 && searchTerm !== "" ? (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400 col-span-full">
+                    Aucun ami trouvé pour "{searchTerm}"
+                  </div>
+                ) : (
+                  filteredConnections.map((friend) => (
+                    <div
+                      key={friend.id} // Add key prop using friend.id
+                      className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      <div className="h-12 w-12 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                        <Image
+                          alt={friend.name}
+                          className="h-full w-full object-cover"
+                          src={
+                            friend.profilePhoto
+                              ? `http://localhost:8080/upload/${friend.profilePhoto}`
+                              : "/placeholder.svg"
+                          }
+                          width={48} // Corresponds to h-12 w-12 (48px) container
+                          height={48}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-gray-900 dark:text-white truncate">{friend.name}</h4>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{friend.role}</p>
+                      </div>
+                      <button className="p-1.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                        <MessageSquare className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}
         </div>
       </main>
+
+      {/* Toast Notification */}
+      {toast && (
+        <div
+          className={`fixed bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg transition-all duration-300 ${
+            toast.type === "success"
+              ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+              : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+          }`}
+        >
+          {toast.type === "success" ? <CheckCircle className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
+          <p className="text-sm font-medium">{toast.message}</p>
+        </div>
+      )}
 
       <MobileNav />
     </div>

@@ -2,7 +2,9 @@
 
 import type React from "react"
 import { useState, useRef, useEffect } from "react"
-import {ThumbsUp,
+import { useRouter } from "next/navigation"
+import {
+  ThumbsUp,
   MessageCircle,
   Share2,
   MoreHorizontal,
@@ -12,9 +14,9 @@ import {ThumbsUp,
   Globe,
   Heart,
   Play,
-  ImageIcon,
   Download,
-  ExternalLink,} from "lucide-react"
+  ExternalLink,
+} from "lucide-react"
 
 interface CommentType {
   id: string
@@ -27,7 +29,9 @@ interface CommentType {
 }
 
 interface PostProps {
- avatar: React.ReactNode
+  postId: string
+  authorId: string
+  avatar: React.ReactNode
   avatarBg?: string
   name: string
   title: string
@@ -50,9 +54,12 @@ interface PostProps {
   comments: number
   isLiked?: boolean
   commentsList?: CommentType[]
-  visibility?: "public" | "friends" | "private"}
+  visibility?: "public" | "friends" | "private"
+}
 
 const Post: React.FC<PostProps> = ({
+  postId,
+  authorId,
   avatar,
   avatarBg = "",
   name,
@@ -78,62 +85,73 @@ const Post: React.FC<PostProps> = ({
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [isVideoPlaying, setIsVideoPlaying] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const [liked, setLiked] = useState(isLiked)
+  const [likeCount, setLikeCount] = useState(likes)
+  const [isLikeLoading, setIsLikeLoading] = useState(false)
+  const [commentsData, setCommentsData] = useState<CommentType[]>([])
+  const [commentsLoading, setCommentsLoading] = useState(false)
+  const [commentsError, setCommentsError] = useState<string | null>(null)
+  const [commentsFetched, setCommentsFetched] = useState(false)
+  const router = useRouter()
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   const imagesArray = images || (image ? [image] : undefined)
 
   // Determine media type
   const mediaType = imagesArray ? "images" : video ? "video" : document ? "document" : null
 
-  // Default comments if none provided
-  const defaultComments: CommentType[] = [
-    {
-      id: "1",
-      name: "Marie Dupont",
-      avatar: "MD",
-      avatarBg: "bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900/40 dark:to-purple-800/20",
-      content: "Super article, merci pour le partage ! J'apprécie vraiment la qualité de ton contenu.",
-      time: "Il y a 2h",
-      likes: 5,
-    },
-    {
-      id: "2",
-      name: "Thomas Martin",
-      avatar: "TM",
-      avatarBg: "bg-gradient-to-br from-green-100 to-emerald-200 dark:from-green-900/40 dark:to-emerald-800/20",
-      content: "Je suis tout à fait d'accord avec ton analyse. C'est très pertinent et bien documenté.",
-      time: "Il y a 1h",
-      likes: 2,
-    },
-    {
-      id: "3",
-      name: "Sophie Lefebvre",
-      avatar: "SL",
-      avatarBg: "bg-gradient-to-br from-pink-100 to-rose-200 dark:from-pink-900/40 dark:to-rose-800/20",
-      content: "Très intéressant, j'aimerais en savoir plus sur ce sujet. As-tu d'autres ressources à partager ?",
-      time: "Il y a 45min",
-      likes: 1,
-    },
-    {
-      id: "4",
-      name: "Lucas Bernard",
-      avatar: "LB",
-      avatarBg: "bg-gradient-to-br from-blue-100 to-sky-200 dark:from-blue-900/40 dark:to-sky-800/20",
-      content: "Est-ce que tu pourrais partager tes sources ? J'aimerais approfondir certains points.",
-      time: "Il y a 30min",
-      likes: 0,
-    },
-    {
-      id: "5",
-      name: "Emma Petit",
-      avatar: "EP",
-      avatarBg: "bg-gradient-to-br from-amber-100 to-yellow-200 dark:from-amber-900/40 dark:to-yellow-800/20",
-      content: "J'ai partagé cet article avec mon équipe, merci ! Nous allons certainement l'utiliser comme référence.",
-      time: "Il y a 15min",
-      likes: 3,
-    },
-  ]
+  // Fetch comments from API when comments section is opened
+  useEffect(() => {
+    if (showComments && !commentsFetched && postId) {
+      setCommentsLoading(true)
+      setCommentsError(null)
+      fetch(`http://localhost:8080/comments/post/${postId}?limit=${visibleComments}&skip=0`, {
+        credentials: "include",
+      })
+        .then(async (res) => {
+          if (!res.ok) throw new Error("Erreur lors du chargement des commentaires")
+          const json = await res.json()
+          if (json.success && Array.isArray(json.data)) {
+            setCommentsData(
+              json.data.map((c: any) => ({
+                id: c._id,
+                name: `${c.user.lastName} ${c.user.firstName}`,
+                avatar: c.user.profilePhoto ? (
+                  <img
+                    src={`http://localhost:8080/uploads/${c.user.profilePhoto}`}
+                    alt="avatar"
+                    className="h-8 w-8 rounded-full object-cover"
+                  />
+                ) : (
+                  `${c.user.firstName[0] || ""}${c.user.lastName[0] || ""}`
+                ),
+                avatarBg: "bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/40 dark:to-blue-800/20",
+                content: c.content,
+                time: new Date(c.createdAt).toLocaleString("fr-FR", {
+                  dateStyle: "short",
+                  timeStyle: "short",
+                }),
+                likes: Array.isArray(c.likes) ? c.likes.length : 0,
+              }))
+            );
+            setCommentsFetched(true)
+          } else {
+            setCommentsError("Aucun commentaire trouvé.")
+          }
+        })
+        .catch(() => setCommentsError("Erreur lors du chargement des commentaires"))
+        .finally(() => setCommentsLoading(false))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showComments, postId])
 
-  const allComments = commentsList.length > 0 ? commentsList : defaultComments
+  // Remove defaultComments and only use API/provided comments
+  const allComments =
+    commentsFetched && commentsData.length > 0
+      ? commentsData
+      : commentsList.length > 0
+        ? commentsList
+        : []
   const displayedComments = allComments.slice(0, visibleComments)
   const hasMoreComments = visibleComments < allComments.length
 
@@ -145,12 +163,53 @@ const Post: React.FC<PostProps> = ({
     setShowComments(!showComments)
   }
 
-  const handleSubmitComment = (e: React.FormEvent) => {
+  const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (newComment.trim()) {
-      // In a real app, you would add the comment to your database
-      // For now, we'll just clear the input
-      setNewComment("")
+    if (!newComment.trim() || !postId) return
+
+    try {
+      const res = await fetch(`http://localhost:8080/comments/${postId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ content: newComment }),
+      })
+      const json = await res.json()
+      if (res.ok && json.success && json.data) {
+        setNewComment("")
+        // Optimistically add the new comment to the top of the list
+        setCommentsData((prev) => [
+          {
+            id: json.data._id,
+            name: `${json.data.user.lastName} ${json.data.user.firstName}`,
+            avatar: json.data.user.profilePhoto ? (
+              <img
+                src={`http://localhost:8080/uploads/${json.data.user.profilePhoto}`}
+                alt="avatar"
+                className="h-8 w-8 rounded-full object-cover"
+              />
+            ) : (
+              `${json.data.user.firstName[0] || ""}${json.data.user.lastName[0] || ""}`
+            ),
+            avatarBg: "bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/40 dark:to-blue-800/20",
+            content: json.data.content,
+            time: new Date(json.data.createdAt).toLocaleString("fr-FR", {
+              dateStyle: "short",
+              timeStyle: "short",
+            }),
+            likes: Array.isArray(json.data.likes) ? json.data.likes.length : 0,
+          },
+          ...commentsData,
+        ])
+        setCommentsFetched(true)
+        setShowComments(true)
+      } else {
+        // Optionally handle error feedback
+      }
+    } catch (err) {
+      // Optionally handle error feedback
     }
   }
   const nextImage = () => {
@@ -209,6 +268,35 @@ const Post: React.FC<PostProps> = ({
 
   const visibilityInfo = getVisibilityInfo()
 
+  // Handle like functionality with real API call
+  const handleLike = async () => {
+    if (isLikeLoading || !postId) return
+
+    setIsLikeLoading(true)
+
+    try {
+      const response = await fetch(`http://localhost:8080/posts/${postId}/like`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      })
+
+      if (response.ok) {
+        // Only update UI if API call was successful
+        setLiked(!liked)
+        setLikeCount((prev) => prev + (liked ? -1 : 1))
+      } else {
+        // Handle API error
+        console.error("API Error:", "Failed to update like status")
+      }
+    } catch (error) {
+      console.error("Error liking post:", error)
+    } finally {
+      setIsLikeLoading(false)
+    }
+  }
 
   // Scroll to new comments when they're loaded
   useEffect(() => {
@@ -241,6 +329,37 @@ const Post: React.FC<PostProps> = ({
     }
   }, [])
 
+  // Fetch current user ID
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const res = await fetch("http://localhost:8080/profile/me", {
+          credentials: "include",
+        })
+        if (res.ok) {
+          const json = await res.json()
+          if (json.success && json.profile) {
+            setCurrentUserId(json.profile.id_user)
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching current user:", error)
+      }
+    }
+    fetchCurrentUser()
+  }, [])
+
+  // Handle profile navigation
+  const handleProfileClick = () => {
+    if (currentUserId && authorId === currentUserId) {
+      // Navigate to own profile
+      router.push("/profile")
+    } else {
+      // Navigate to other user's profile
+      router.push(`/profile/${authorId}`)
+    }
+  }
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200/80 dark:border-gray-700/80 overflow-hidden transition-all duration-300 hover:shadow-lg">
       <div className="p-5">
@@ -248,17 +367,42 @@ const Post: React.FC<PostProps> = ({
           <div
             className={`h-12 w-12 rounded-full ${
               avatarBg || "bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700"
-            } flex items-center justify-center shrink-0 shadow-sm ring-2 ring-white dark:ring-gray-700`}
+            } flex items-center justify-center shrink-0 shadow-sm ring-2 ring-white dark:ring-gray-700 cursor-pointer hover:ring-blue-300`}
+            onClick={handleProfileClick}
+            title="Voir le profil"
           >
             {avatar}
           </div>
           <div className="flex-1">
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white">{name}</h3>
+                <h3 
+                  className="font-semibold text-gray-900 dark:text-white cursor-pointer hover:underline"
+                  onClick={handleProfileClick}
+                  title="Voir le profil"
+                >
+                  {name}
+                </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{title}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {time} • <span className="text-blue-600 dark:text-blue-400">Visible par tous</span>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
+                  {time} •
+                  <span
+                    className={`${
+                      visibility === "friends"
+                        ? "text-blue-500 dark:text-blue-400"
+                        : visibility === "private"
+                          ? "text-purple-500 dark:text-purple-400"
+                          : "text-green-500 dark:text-green-400"
+                    }`}
+                  >
+                    {visibility === "friends" ? (
+                      <Users className="h-3.5 w-3.5" />
+                    ) : visibility === "private" ? (
+                      <Lock className="h-3.5 w-3.5" />
+                    ) : (
+                      <Globe className="h-3.5 w-3.5" />
+                    )}
+                  </span>
                 </p>
               </div>
               <button className="text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full p-1.5 transition-colors duration-200">
@@ -268,11 +412,6 @@ const Post: React.FC<PostProps> = ({
             <div className="mt-3.5">
               <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">{content}</p>
             </div>
-            {/* {image && (
-              <div className="mt-4 rounded-xl overflow-hidden border border-gray-200/80 dark:border-gray-700/80 shadow-sm">
-                <img src={image || "/default-placeholder.png"} alt={imageAlt} className="w-full h-auto object-cover" />
-              </div>
-            )} */}
             {mediaType && (
               <div className="mt-4">
                 {/* Multiple images */}
@@ -432,13 +571,13 @@ const Post: React.FC<PostProps> = ({
           </div>
         </div>
 
-        {(likes > 0 || comments > 0) && (
+        {(likeCount > 0 || comments > 0) && (
           <div className="mt-4 pt-1 flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
             <div className="flex items-center gap-1.5">
               <div className="bg-gradient-to-r from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 rounded-full p-1 shadow-sm">
                 <ThumbsUp className="h-3 w-3 text-blue-600 dark:text-blue-400" />
               </div>
-              <span>{likes}</span>
+              <span>{likeCount}</span>
             </div>
             {comments > 0 && (
               <button
@@ -454,11 +593,19 @@ const Post: React.FC<PostProps> = ({
       <div className="flex border-t border-gray-200/80 dark:border-gray-700/80">
         <button
           className={`flex-1 py-3 flex items-center justify-center gap-2 text-sm ${
-            isLiked ? "text-blue-600 dark:text-blue-400 font-medium" : "text-gray-600 dark:text-gray-300"
-          } hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-200`}
-          aria-label={isLiked ? "Retirer le j'aime" : "Aimer le post"}
+            liked ? "text-blue-600 dark:text-blue-400 font-medium" : "text-gray-600 dark:text-gray-300"
+          } hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-200 ${
+            isLikeLoading ? "opacity-70 cursor-not-allowed" : ""
+          }`}
+          aria-label={liked ? "Retirer le j'aime" : "Aimer le post"}
+          onClick={handleLike}
+          disabled={isLikeLoading}
         >
-          <ThumbsUp className={`h-4 w-4 ${isLiked ? "fill-current" : ""}`} />
+          {isLikeLoading ? (
+            <div className="h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <ThumbsUp className={`h-4 w-4 ${liked ? "fill-current" : ""}`} />
+          )}
           <span>J'aime</span>
         </button>
         <button
@@ -529,9 +676,18 @@ const Post: React.FC<PostProps> = ({
 
           {/* Comments list */}
           <div className="px-4 py-3 space-y-4">
-            {displayedComments.map((comment, index) => (
+            {commentsLoading && (
+              <div className="text-center text-gray-500 dark:text-gray-400 py-4">Chargement des commentaires...</div>
+            )}
+            {commentsError && (
+              <div className="text-center text-red-500 dark:text-red-400 py-4">{commentsError}</div>
+            )}
+            {!commentsLoading && !commentsError && displayedComments.length === 0 && (
+              <div className="text-center text-gray-500 dark:text-gray-400 py-4">Aucun commentaire</div>
+            )}
+            {!commentsLoading && !commentsError && displayedComments.map((comment, index) => (
               <div
-                key={comment.id}
+                key={comment.id || index}
                 className="group animate-in fade-in slide-in-from-bottom-2 duration-300"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
@@ -573,7 +729,7 @@ const Post: React.FC<PostProps> = ({
             ))}
 
             {/* Show more button */}
-            {hasMoreComments && (
+            {!commentsLoading && !commentsError && hasMoreComments && (
               <div className="pt-2 pb-3 flex justify-center">
                 <button
                   onClick={handleShowMoreComments}

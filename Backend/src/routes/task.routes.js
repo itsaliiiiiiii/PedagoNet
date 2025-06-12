@@ -13,10 +13,33 @@ const {
 } = require('../services/task.service');
 
 // Create a new task (Professor only)
-router.post('/:classroomId', authenticateToken, checkProfessorRole, async (req, res) => {
+router.post('/:classroomId', authenticateToken, checkProfessorRole, upload.array('attachments', 5), async (req, res) => {
     try {
-        const result = await createTask(req.user.id_user, req.params.classroomId, req.body);
-        res.status(result.success ? 201 : 400).json(result);
+        const taskData = {
+            title: req.body.title,
+            description: req.body.description,
+            deadline: req.body.deadline,
+            maxScore: req.body.maxScore || 100,
+            attachments: req.files ? req.files.map(file => ({
+                filename: file.filename,
+                originalName: file.originalname,
+                mimetype: file.mimetype,
+                size: file.size,
+                path: file.path
+            })) : []
+        };
+
+        const result = await createTask(req.user.id_user, req.params.classroomId, taskData);
+        
+        if (!result.success) {
+            return res.status(400).json(result);
+        }
+
+        res.status(201).json({
+            success: true,
+            message: 'Task created successfully',
+            task: result.task
+        });
     } catch (error) {
         console.error('Task creation error:', error);
         res.status(500).json({ success: false, message: 'Internal server error' });

@@ -1,9 +1,8 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import Link from 'next/link';
 import NavButton from './navButton';
-import { Home, Users, MessagesSquare, Bell, User } from 'lucide-react';
+import { Home, Users, MessagesSquare, Bell, User,BookOpen } from 'lucide-react';
 
 export default function MobileNav() {
   const pathname = usePathname();
@@ -13,14 +12,20 @@ export default function MobileNav() {
       <NavButton 
         icon={<Home />} 
         label="Accueil" 
-        href="/home" 
-        active={pathname === '/home'} 
+        href="/feed" 
+        active={pathname === '/feed'} 
       />
       <NavButton 
         icon={<Users />} 
         label="Réseau" 
         href="/network/requests" 
         active={pathname === '/network/requests'} 
+      />
+      <NavButton
+        icon={<BookOpen />}
+        label="Classroom"
+        href="/classroom"
+        active={pathname.startsWith("/classroom")}
       />
       <NavButton 
         icon={<MessagesSquare />} 
