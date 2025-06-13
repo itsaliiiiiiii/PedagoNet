@@ -688,7 +688,7 @@ class _HomePageState extends State<HomePage>
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => const FriendsPage(),
+                builder: (context) =>  FriendsPage(token: widget.token,),
               ),
             );
           },

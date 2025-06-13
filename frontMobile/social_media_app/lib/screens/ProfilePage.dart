@@ -178,7 +178,9 @@ class _ProfilePageState extends State<ProfilePage> {
       } else {
         // Gérer l'erreur
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur lors du téléchargement de l\'image: ${response.statusCode}')),
+          SnackBar(
+              content: Text(
+                  'Erreur lors du téléchargement de l\'image: ${response.statusCode}')),
         );
       }
     } catch (e) {
@@ -248,7 +250,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
       if (profileData != null && profileData['profile'] != null) {
         // final postData = await fetchPosts(profileData['profile']['id_user']);
-
 
         if (mounted) {
           setState(() {
@@ -394,18 +395,21 @@ class _ProfilePageState extends State<ProfilePage> {
     if (profile != null) {
       // Afficher tous les champs du profil pour le débogage
       print('Profile data: $profile');
-      
+
       // Vérifier les différentes clés possibles pour l'URL de l'image
       String? imageUrl;
-      
-      if (profile!.containsKey('profilePhotoFilename') && profile!['profilePhotoFilename'] != null) {
+
+      if (profile!.containsKey('profilePhotoFilename') &&
+          profile!['profilePhotoFilename'] != null) {
         imageUrl = '${Api.baseUrl}/uploads/${profile!['profilePhotoFilename']}';
-      } else if (profile!.containsKey('avatarUrl') && profile!['avatarUrl'] != null) {
+      } else if (profile!.containsKey('avatarUrl') &&
+          profile!['avatarUrl'] != null) {
         imageUrl = '${Api.baseUrl}/uploads/${profile!['avatarUrl']}';
-      } else if (profile!.containsKey('photoUrl') && profile!['photoUrl'] != null) {
+      } else if (profile!.containsKey('photoUrl') &&
+          profile!['photoUrl'] != null) {
         imageUrl = profile!['photoUrl'];
       }
-      
+
       if (imageUrl != null) {
         print('Using profile image URL: $imageUrl');
         return ClipOval(
@@ -427,7 +431,7 @@ class _ProfilePageState extends State<ProfilePage> {
         );
       }
     }
-    
+
     // Fallback à l'icône par défaut
     return Icon(
       Icons.person,
@@ -496,7 +500,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => FriendsPage(),
+                                  builder: (context) => FriendsPage(token: widget.token,),
                                 ))
                           },
                         ),
@@ -797,8 +801,8 @@ class _ProfilePageState extends State<ProfilePage> {
                     post['createdAt']?['year']?['low']?.toString() ?? 'inconnu',
                 description: post['content'],
                 filename: post['attachments'].isNotEmpty
-                          ? post['attachments'][0]['filename']
-                          : '',
+                    ? post['attachments'][0]['filename']
+                    : '',
                 likes: post['likesCount'] ?? 0,
                 isLiked: post['hasLiked'] ?? false,
                 authorImage: post['author']['profilePhotoUrl'],
