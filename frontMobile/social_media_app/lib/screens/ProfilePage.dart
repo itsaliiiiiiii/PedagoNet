@@ -291,7 +291,6 @@ class _ProfilePageState extends State<ProfilePage> {
               _buildProfileHeader(),
               _buildProfileInfo(),
               _buildProfileStats(),
-              _buildProfileActions(),
               _buildDivider(),
               _buildPostsSection(),
             ],
@@ -576,8 +575,6 @@ class _ProfilePageState extends State<ProfilePage> {
           _buildVerticalDivider(),
           _buildStatItem(
               "Abonnés", profile?['followersCount']?.toString() ?? "0"),
-          _buildVerticalDivider(),
-          _buildStatItem("Vues", profile?['viewsCount']?.toString() ?? "0"),
         ],
       ),
     );
@@ -619,56 +616,8 @@ class _ProfilePageState extends State<ProfilePage> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Row(
         children: [
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: () {
-                setState(() {
-                  isFollowing = !isFollowing;
-                });
-              },
-              icon: Icon(
-                isFollowing ? Icons.check : Icons.add,
-                color: isFollowing ? Colors.grey[700] : Colors.white,
-              ),
-              label: Text(
-                isFollowing ? 'Abonné' : 'S\'abonner',
-                style: TextStyle(
-                  color: isFollowing ? Colors.grey[700] : Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    isFollowing ? Colors.grey[200] : Colors.blue[600],
-                padding: EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                elevation: isFollowing ? 0 : 2,
-              ),
-            ),
-          ),
           SizedBox(width: 10),
-          ElevatedButton.icon(
-            onPressed: () {},
-            icon: Icon(Icons.message, color: Colors.blue[700]),
-            label: Text(
-              'Message',
-              style: TextStyle(
-                color: Colors.blue[700],
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-                side: BorderSide(color: Colors.blue[700]!),
-              ),
-              elevation: 0,
-            ),
-          ),
+          
           SizedBox(width: 10),
           Container(
             decoration: BoxDecoration(
